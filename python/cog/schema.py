@@ -36,7 +36,14 @@ class WebhookEvent(str, Enum):
         # so even though it's logically a set, have it as a list for deterministic schemas
         # note: this change removes "uniqueItems":true
         return [cls.START, cls.OUTPUT, cls.LOGS, cls.COMPLETED]
-
+    
+class ExternalInfoToolRequest(pydantic.BaseModel, extra=pydantic.Extra.allow):
+    id: str
+    name: str
+    description: str
+    
+    # add a spec field which whill be json schema
+    spec: t.Dict[str, t.Any]
 
 class PredictionBaseModel(pydantic.BaseModel, extra=pydantic.Extra.allow):
     input: t.Dict[str, t.Any]

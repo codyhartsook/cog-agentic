@@ -9,7 +9,6 @@ from attrs import define, field, validators
 class PredictionInput:
     payload: Dict[str, Any]
 
-
 @define
 class Shutdown:
     pass

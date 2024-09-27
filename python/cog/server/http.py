@@ -27,28 +27,19 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-from ..predictor import (
-    get_input_type,
-    get_output_type,
-    get_predictor_ref,
-    get_training_input_type,
-    get_training_output_type,
-    load_config,
-    load_slim_predictor_from_ref,
-)
+from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
+                         get_training_input_type, get_training_output_type,
+                         load_config, load_slim_predictor_from_ref)
 from ..types import CogConfig
 from .probes import ProbeHelper
-from .runner import (
-    PredictionRunner,
-    RunnerBusyError,
-    SetupResult,
-    UnknownPredictionError,
-)
+from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
+                     UnknownPredictionError)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
 if TYPE_CHECKING:
-    from typing import ParamSpec, TypeVar  # pylint: disable=import-outside-toplevel
+    from typing import ParamSpec  # pylint: disable=import-outside-toplevel
+    from typing import TypeVar
 
     P = ParamSpec("P")  # pylint: disable=invalid-name
     T = TypeVar("T")  # pylint: disable=invalid-name
@@ -262,6 +253,33 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
             health = app.state.health
         setup = app.state.setup_result.to_dict() if app.state.setup_result else {}
         return jsonable_encoder({"status": health.name, "setup": setup})
+    
+    @app.post("/add-external-info-tool")
+    async def add_info_source(
+        request: schema.ExternalInfoToolRequest = Body(..., title="Information Source Request"),
+        traceparent: Optional[str] = Header(default=None, include_in_schema=False),
+        tracestate: Optional[str] = Header(default=None, include_in_schema=False),
+    ) -> Any:
+        """
+        Add a new information source to the model
+        """
+        log.info("Adding information source", source_id=request.id)
+
+        worker.add_external_tool(request)
+
+        # we want to add this info tool to the model/agent
+        return "Information source added successfully"
+    
+    @app.post("/remove-external-info-tool")
+    async def remove_info_source(
+        source_id: str = Body(..., title="Information Source ID"),
+        traceparent: Optional[str] = Header(default=None, include_in_schema=False),
+        tracestate: Optional[str] = Header(default=None, include_in_schema=False),
+    ) -> Any:
+        """
+        Remove an information source from the model
+        """
+        return "Information source removed successfully"
 
     @limited
     @app.post(
