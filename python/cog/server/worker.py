@@ -348,17 +348,8 @@ class ChildWorker(_spawn.Process):  # type: ignore
         # generate a retrieval function from the openapi spec
         input_schema, output_schema, retrieval_func = retrieval_func_from_spec(request.spec)
 
-        # create a tool object
-        tool = ExternalInfoTool(
-            id=request.id,
-            name=request.name,
-            description=request.description,
-            func=retrieval_func,
-            args_schema=input_schema,
-        )
-
         if check_tool_methods_implemented(self._predictor):
-            self._predictor.add_tool(request.name, request.description, retrieval_func, input_schema)
+            self._predictor.add_tool(request.name, request.description, input_schema, retrieval_func)
         else:
             log.info("external info source methods NOT implemented")
     

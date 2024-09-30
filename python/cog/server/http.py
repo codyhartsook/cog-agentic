@@ -255,7 +255,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         return jsonable_encoder({"status": health.name, "setup": setup})
     
     @app.post("/add-external-info-tool")
-    async def add_info_source(
+    async def add_external_info_tool(
         request: schema.ExternalInfoToolRequest = Body(..., title="Information Source Request"),
         traceparent: Optional[str] = Header(default=None, include_in_schema=False),
         tracestate: Optional[str] = Header(default=None, include_in_schema=False),
@@ -271,7 +271,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         return "Information source added successfully"
     
     @app.post("/remove-external-info-tool")
-    async def remove_info_source(
+    async def remove_external_info_tool(
         source_id: str = Body(..., title="Information Source ID"),
         traceparent: Optional[str] = Header(default=None, include_in_schema=False),
         tracestate: Optional[str] = Header(default=None, include_in_schema=False),

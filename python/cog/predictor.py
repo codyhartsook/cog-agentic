@@ -67,13 +67,13 @@ class BasePredictor(ABC):
         Run a single prediction on the model
         """
 
-    def add_tool(self, tool: ExternalInfoTool) -> None:
+    def add_tool(self, name: str, description: str, schema: BaseModel, func: Callable[..., Any]) -> None:
         """
-        Optional: Explicitly define how your agent should handle tools at runtime.
-        Tool auto-injection is the default behavior for langchain and autogen agents.
+        Optional: Manage how your agent handles tools at runtime via API requests.
+        This behavior is automatically managed by default via tool injection.
         """
 
-    def remove_tool(self, tool: ExternalInfoTool) -> None:
+    def remove_tool(self, name: str) -> None:
         """
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
@@ -120,13 +120,17 @@ def _import_generated_models(output_file: str ='model.py'):
     from model import Input, Output
     return Input, Output
 
-def retrieval_func_from_spec(openapi_spec: Dict[str, Any], output_file: str = 'model.py'):
+def retrieval_func_from_spec(name: str, openapi_spec: Dict[str, Any]):
     """Generate Pydantic models from OpenAPI spec and return the models."""
-    _generate_pydantic_models_from_spec(openapi_spec, output_file)
-    Input, Output = _import_generated_models(output_file)
+    _generate_pydantic_models_from_spec(openapi_spec)
+    Input, Output = _import_generated_models()
 
     def callback(input: Input) -> Output:
         log.info(f"Received input: {input}")
+
+        # make an API call to the tool
+        
+        # url = http://{name}/predictions
 
         return "The price of BTC is $61,000"
 
