@@ -13,6 +13,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
+import requests
+
 try:
     from typing import get_args, get_origin
 except ImportError:  # Python < 3.8
@@ -23,20 +25,20 @@ from unittest.mock import patch
 import structlog
 import yaml
 from autogen import ConversableAgent
-#from langchain.agents import AgentExecutor
+
+# from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
+
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
 from typing_extensions import Annotated
 
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
-from .types import CogConfig, ExternalInfoTool
+from .types import CogConfig, Input, URLPath
 from .types import File as CogFile
-from .types import Input
 from .types import Path as CogPath
 from .types import Secret as CogSecret
-from .types import URLPath
 
 log = structlog.get_logger("cog.server.predictor")
 
@@ -67,7 +69,9 @@ class BasePredictor(ABC):
         Run a single prediction on the model
         """
 
-    def add_tool(self, name: str, description: str, schema: BaseModel, func: Callable[..., Any]) -> None:
+    def add_tool(
+        self, name: str, description: str, schema: BaseModel, func: Callable[..., Any]
+    ) -> None:
         """
         Optional: Manage how your agent handles tools at runtime via API requests.
         This behavior is automatically managed by default via tool injection.
@@ -79,8 +83,9 @@ class BasePredictor(ABC):
         """
 
     def tooling_capable_agents(self) -> dict:
-        class AgentExecutor: # temporary fix for langchain dependency on pydantic > 2
+        class AgentExecutor:  # temporary fix for langchain dependency on pydantic > 2
             pass
+
         """
         Return a dictionary of agents that are capable of using tools. This will 
         be used to dynamically add tools to the agents.
@@ -93,57 +98,82 @@ class BasePredictor(ABC):
                 agent_atomics[AgentExecutor][key] = value
 
         return agent_atomics
-    
-def _generate_pydantic_models_from_spec(openapi_spec: Dict[str, Any], output_file: str = 'model.py'):
+
+
+def _generate_pydantic_models_from_spec(
+    openapi_spec: Dict[str, Any], output_file: str = "model.py"
+):
     """Generate Pydantic models from OpenAPI spec."""
     # Save OpenAPI spec to a temporary JSON file
-    with open('schema.json', 'w') as f:
+    with open("schema.json", "w") as f:
         json.dump(openapi_spec, f)
 
     # Run the datamodel-code-generator subprocess
     # write to model.py and overwrite if it already exists
     subprocess.run(
-        ['python', '-m', 'datamodel_code_generator', '--input', 'schema.json', '--input-file-type', 'openapi', '--output', output_file],
-        check=True
+        [
+            "python",
+            "-m",
+            "datamodel_code_generator",
+            "--input",
+            "schema.json",
+            "--input-file-type",
+            "openapi",
+            "--output",
+            output_file,
+        ],
+        check=True,
     )
 
     # Clean up temporary file
-    os.remove('schema.json')
+    os.remove("schema.json")
 
-def _import_generated_models(output_file: str ='model.py'):
+
+def _import_generated_models(output_file: str = "model.py"):
     """Dynamically import the generated Pydantic models."""
     spec = importlib.util.spec_from_file_location("models", output_file)
-    models = importlib.util.module_from_spec(spec) # type: ignore
-    spec.loader.exec_module(models) # type: ignore
+    models = importlib.util.module_from_spec(spec)  # type: ignore
+    spec.loader.exec_module(models)  # type: ignore
 
     # we could also just return the Input and Output models
     from model import Input, Output
+
     return Input, Output
 
-def retrieval_func_from_spec(name: str, openapi_spec: Dict[str, Any]):
+
+def retrieval_func_from_spec(openapi_spec: Dict[str, Any]):
     """Generate Pydantic models from OpenAPI spec and return the models."""
     _generate_pydantic_models_from_spec(openapi_spec)
     Input, Output = _import_generated_models()
+
+    print(f"Input: {Input.schema()}")
 
     def callback(input: Input) -> Output:
         log.info(f"Received input: {input}")
 
         # make an API call to the tool
-        
-        # url = http://{name}/predictions
+        resp = requests.post("http://172.16.0.14:5002/predictions", json=input.dict())
+        resp.raise_for_status()
 
+        # return the response
         return "The price of BTC is $61,000"
 
+        # url = http://{name}/predictions
+
+        # return "The price of BTC is $61,000"
+
     return Input, Output, callback
-    
+
+
 def check_tool_methods_implemented(subclass: Optional[Type[BasePredictor]]) -> bool:
     if subclass is None:
         return False
-    
+
     add_tool_implemented = check_method_implementation(subclass, "add_tool")
     remove_tool_implemented = check_method_implementation(subclass, "remove_tool")
 
     return add_tool_implemented and remove_tool_implemented
+
 
 def check_method_implementation(subclass, method_name):
     """
@@ -160,13 +190,14 @@ def check_method_implementation(subclass, method_name):
 
     # Compare the source code of the methods, if available
     try:
-        base_source = inspect.getsource(base_method) # type: ignore
+        base_source = inspect.getsource(base_method)  # type: ignore
         sub_source = inspect.getsource(sub_method)
 
         return base_source != sub_source
     except OSError:
         # Source code not available for comparison
         return False
+
 
 def run_setup(predictor: BasePredictor) -> None:
     weights_type = get_weights_type(predictor.setup)

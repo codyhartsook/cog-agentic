@@ -6,11 +6,10 @@ import shutil
 import tempfile
 import urllib.parse
 import urllib.request
-from typing import (Any, Callable, Dict, Iterator, List, Optional, TypeVar,
-                    Union)
+from typing import Any, Dict, Iterator, List, Optional, TypeVar, Union
 
 import requests
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import Field, SecretStr
 from typing_extensions import NotRequired, TypedDict
 
 FILENAME_ILLEGAL_CHARS = set("\u0000/")
@@ -38,7 +37,7 @@ class CogBuildConfig(TypedDict, total=False):  # pylint: disable=too-many-ancest
     run: Optional[Union[List[str], List[Dict[str, Any]]]]
 
 
-class ExternalInfoTool():
+"""class ExternalInfoTool():
     id: str
     name: str
     description: str
@@ -50,7 +49,8 @@ class ExternalInfoTool():
         self.name = name
         self.description = description
         self.func = func
-        self.args_schema = args_schema
+        self.args_schema = args_schema"""
+
 
 def Input(  # pylint: disable=invalid-name, too-many-arguments
     default: Any = ...,

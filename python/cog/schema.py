@@ -36,14 +36,36 @@ class WebhookEvent(str, Enum):
         # so even though it's logically a set, have it as a list for deterministic schemas
         # note: this change removes "uniqueItems":true
         return [cls.START, cls.OUTPUT, cls.LOGS, cls.COMPLETED]
-    
+
+
+class Metadata(pydantic.BaseModel):
+    annotations: t.Dict[str, str]
+    name: str
+    namespace: str
+    description: str
+    published: bool
+
+
+class Spec(pydantic.BaseModel):
+    owner: str
+    access_level: str
+    consumes_apis: t.List[str]
+    predictor_schema: t.Dict[str, t.Any]  # OpenAPI schema will be a dictionary
+
+
+class RemotePredictor(pydantic.BaseModel, extra=pydantic.Extra.allow):
+    metadata: Metadata
+    spec: Spec
+
+
 class ExternalInfoToolRequest(pydantic.BaseModel, extra=pydantic.Extra.allow):
     id: str
     name: str
     description: str
-    
+
     # add a spec field which whill be json schema
     spec: t.Dict[str, t.Any]
+
 
 class PredictionBaseModel(pydantic.BaseModel, extra=pydantic.Extra.allow):
     input: t.Dict[str, t.Any]
