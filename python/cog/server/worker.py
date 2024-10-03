@@ -17,8 +17,8 @@ from ..json import make_encodeable
 from ..predictor import (BasePredictor, check_tool_methods_implemented,
                          get_predict, load_predictor_from_ref,
                          retrieval_func_from_spec, run_setup)
-from ..schema import ExternalInfoToolRequest
-from ..types import ExternalInfoTool, URLPath
+from ..schema import RemotePredictor
+from ..types import URLPath
 from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
                          PredictionOutputType, Shutdown)
 from .exceptions import (CancelationException, FatalWorkerException,
@@ -79,11 +79,10 @@ class Worker:
         self._predict_start.set()
         return result
     
-    def add_external_tool(self, request: ExternalInfoToolRequest) -> None:
+    def add_external_tool(self, request: RemotePredictor) -> None:
         """
         Add an external info source tool to the predictor (agent).
         """
-        #return self._child.add_external_tool(request)
 
         # we need to pass the request to the child process not just the child reference
         self._events.send(request)
@@ -336,17 +335,17 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 break
             if isinstance(ev, PredictionInput):
                 self._predict(ev.payload, redirector)
-            elif isinstance(ev, ExternalInfoToolRequest):
+            elif isinstance(ev, RemotePredictor):
                 self.add_external_tool(ev)
             else:
                 print(f"Got unexpected event: {ev}", file=sys.stderr)
 
-    def add_external_tool(self, request: ExternalInfoToolRequest) -> None:
+    def add_external_tool(self, request: RemotePredictor) -> None:
         assert self._predictor
         log.info("adding external info source")
 
         # generate a retrieval function from the openapi spec
-        input_schema, output_schema, retrieval_func = retrieval_func_from_spec(request.spec)
+        input_schema, output_schema, retrieval_func = retrieval_func_from_spec(request.spec.predictor_schema)
 
         if check_tool_methods_implemented(self._predictor):
             self._predictor.add_tool(request.name, request.description, input_schema, retrieval_func)

@@ -58,15 +58,6 @@ class RemotePredictor(pydantic.BaseModel, extra=pydantic.Extra.allow):
     spec: Spec
 
 
-class ExternalInfoToolRequest(pydantic.BaseModel, extra=pydantic.Extra.allow):
-    id: str
-    name: str
-    description: str
-
-    # add a spec field which whill be json schema
-    spec: t.Dict[str, t.Any]
-
-
 class PredictionBaseModel(pydantic.BaseModel, extra=pydantic.Extra.allow):
     input: t.Dict[str, t.Any]
 

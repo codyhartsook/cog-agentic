@@ -27,31 +27,19 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-from ..predictor import (
-    get_input_type,
-    get_output_type,
-    get_predictor_ref,
-    get_training_input_type,
-    get_training_output_type,
-    load_config,
-    load_slim_predictor_from_ref,
-)
+from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
+                         get_training_input_type, get_training_output_type,
+                         load_config, load_slim_predictor_from_ref)
 from ..types import CogConfig
 from .probes import ProbeHelper
-from .runner import (
-    PredictionRunner,
-    RunnerBusyError,
-    SetupResult,
-    UnknownPredictionError,
-)
+from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
+                     UnknownPredictionError)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
 if TYPE_CHECKING:
-    from typing import (
-        ParamSpec,  # pylint: disable=import-outside-toplevel
-        TypeVar,
-    )
+    from typing import ParamSpec  # pylint: disable=import-outside-toplevel
+    from typing import TypeVar
 
     P = ParamSpec("P")  # pylint: disable=invalid-name
     T = TypeVar("T")  # pylint: disable=invalid-name
@@ -262,23 +250,22 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         # Fetch the OpenAPI schema
         openapi_schema = app.openapi()
 
-        # Define the response structure according to your Go type
-        response_data = {
-            "metadata": {
-                "name": "My API",
-                "namespace": "default",
-                "description": "This is the API description",
-                "published": True,
-            },
-            "spec": {
-                "owner": "api-owner",
-                "accessLevel": "public",
-                "consumesAPIs": ["api/v1/resource", "api/v1/service"],
-                "schema": openapi_schema,  # Attach the OpenAPI schema here
-            },
-        }
+        this_predictor = schema.RemotePredictor(
+            metadata=schema.Metadata(
+                name="My API",
+                namespace="default",
+                description="This is the API description",
+                published=True,
+            ),
+            spec=schema.Spec(
+                owner="api-owner",
+                access_level="public",
+                consumes_apis=["api/v1/resource", "api/v1/service"],
+                predictor_schema=openapi_schema,  # Attach the OpenAPI schema here
+            ),
+        )
 
-        return response_data
+        return this_predictor.dict()
 
     @app.get("/health-check")
     async def healthcheck() -> Any:
@@ -291,7 +278,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
 
     @app.post("/add-external-info-tool")
     async def add_external_info_tool(
-        request: schema.ExternalInfoToolRequest = Body(
+        request: schema.RemotePredictor = Body(
             ..., title="Information Source Request"
         ),
         traceparent: Optional[str] = Header(default=None, include_in_schema=False),
