@@ -39,7 +39,6 @@ class WebhookEvent(str, Enum):
 
 
 class Metadata(pydantic.BaseModel):
-    annotations: t.Dict[str, str]
     name: str
     namespace: str
     description: str

@@ -2,12 +2,21 @@ from typing import Any, Dict
 
 from attrs import define, field, validators
 
+from ..schema import RemotePredictor
+
 
 # From worker parent process
 #
 @define
 class PredictionInput:
     payload: Dict[str, Any]
+
+
+@define
+class RemotePredictorRequest:
+    predictor: RemotePredictor
+    add: bool = True
+
 
 @define
 class Shutdown:

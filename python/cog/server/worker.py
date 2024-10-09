@@ -14,15 +14,30 @@ from typing import Any, Callable, Dict, Optional, Union
 import structlog
 
 from ..json import make_encodeable
-from ..predictor import (BasePredictor, check_tool_methods_implemented,
-                         get_predict, load_predictor_from_ref,
-                         retrieval_func_from_spec, run_setup)
+from ..predictor import (
+    BasePredictor,
+    check_tool_methods_implemented,
+    get_predict,
+    load_predictor_from_ref,
+    retrieval_func_from_spec,
+    run_setup,
+)
 from ..schema import RemotePredictor
 from ..types import URLPath
-from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
-                         PredictionOutputType, Shutdown)
-from .exceptions import (CancelationException, FatalWorkerException,
-                         InvalidStateException)
+from .eventtypes import (
+    Done,
+    Log,
+    PredictionInput,
+    PredictionOutput,
+    PredictionOutputType,
+    RemotePredictorRequest,
+    Shutdown,
+)
+from .exceptions import (
+    CancelationException,
+    FatalWorkerException,
+    InvalidStateException,
+)
 from .helpers import StreamRedirector
 
 _spawn = multiprocessing.get_context("spawn")
@@ -78,15 +93,14 @@ class Worker:
         self._predict_payload = payload
         self._predict_start.set()
         return result
-    
-    def add_external_tool(self, request: RemotePredictor) -> None:
+
+    def add_external_tool(self, request: RemotePredictorRequest) -> None:
         """
         Add an external info source tool to the predictor (agent).
         """
 
         # we need to pass the request to the child process not just the child reference
         self._events.send(request)
-
 
     def subscribe(self, subscriber: Callable[[_PublicEventType], None]) -> int:
         sid = uuid.uuid4().int
@@ -335,23 +349,42 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 break
             if isinstance(ev, PredictionInput):
                 self._predict(ev.payload, redirector)
-            elif isinstance(ev, RemotePredictor):
-                self.add_external_tool(ev)
+            elif isinstance(ev, RemotePredictorRequest):
+                if ev.add:
+                    self.add_external_tool(ev.predictor)
+                else:
+                    self.remove_external_tool(ev.predictor)
             else:
                 print(f"Got unexpected event: {ev}", file=sys.stderr)
 
-    def add_external_tool(self, request: RemotePredictor) -> None:
+    def add_external_tool(self, pred: RemotePredictor) -> None:
         assert self._predictor
         log.info("adding external info source")
 
         # generate a retrieval function from the openapi spec
-        input_schema, output_schema, retrieval_func = retrieval_func_from_spec(request.spec.predictor_schema)
+        input_schema, output_schema, retrieval_func = retrieval_func_from_spec(
+            pred.spec.predictor_schema
+        )
 
         if check_tool_methods_implemented(self._predictor):
-            self._predictor.add_tool(request.name, request.description, input_schema, retrieval_func)
+            self._predictor.add_tool(
+                pred.metadata.name,
+                pred.metadata.description,
+                input_schema,
+                retrieval_func,
+            )
         else:
             log.info("external info source methods NOT implemented")
-    
+
+    def remove_external_tool(self, pred: RemotePredictor) -> None:
+        assert self._predictor
+        log.info("removing external info source")
+
+        if check_tool_methods_implemented(self._predictor):
+            self._predictor.remove_tool(pred.metadata.name)
+        else:
+            log.info("external info source methods NOT implemented")
+
     def _predict(
         self,
         payload: Dict[str, Any],

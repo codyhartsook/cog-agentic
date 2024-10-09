@@ -152,15 +152,13 @@ def retrieval_func_from_spec(openapi_spec: Dict[str, Any]):
         log.info(f"Received input: {input}")
 
         # make an API call to the tool
-        resp = requests.post("http://172.16.0.14:5002/predictions", json=input.dict())
+        resp = requests.post("http://localhost:5002/predictions", json=input.dict())
         resp.raise_for_status()
 
+        print(f"Response: {resp.json()}")
+
         # return the response
-        return "The price of BTC is $61,000"
-
-        # url = http://{name}/predictions
-
-        # return "The price of BTC is $61,000"
+        return Output(**resp.json())
 
     return Input, Output, callback
 
