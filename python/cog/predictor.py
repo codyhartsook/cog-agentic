@@ -35,6 +35,7 @@ from typing_extensions import Annotated
 
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
+from .schema import RemotePredictor
 from .types import CogConfig, Input, URLPath
 from .types import File as CogFile
 from .types import Path as CogPath
@@ -141,9 +142,9 @@ def _import_generated_models(output_file: str = "model.py"):
     return Input, Output
 
 
-def retrieval_func_from_spec(openapi_spec: Dict[str, Any]):
+def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     """Generate Pydantic models from OpenAPI spec and return the models."""
-    _generate_pydantic_models_from_spec(openapi_spec)
+    _generate_pydantic_models_from_spec(pred.spec.predictor_schema)
     Input, Output = _import_generated_models()
 
     print(f"Input: {Input.schema()}")
@@ -151,8 +152,9 @@ def retrieval_func_from_spec(openapi_spec: Dict[str, Any]):
     def callback(input: Input) -> Output:
         log.info(f"Received input: {input}")
 
-        # make an API call to the tool
-        resp = requests.post("http://localhost:5002/predictions", json=input.dict())
+        # Make an API call to the tool. We could use a redirect here.
+        url = f"http://localhost:5002/predictions/{pred.name}/{pred.namespace}"
+        resp = requests.post(url, json=input.dict())
         resp.raise_for_status()
 
         print(f"Response: {resp.json()}")

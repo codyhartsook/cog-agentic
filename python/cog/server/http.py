@@ -38,6 +38,7 @@ from ..predictor import (
     load_slim_predictor_from_ref,
 )
 from ..types import CogConfig
+from .eventtypes import RemotePredictorRequest
 from .probes import ProbeHelper
 from .runner import (
     PredictionRunner,
@@ -304,7 +305,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         """
         log.info("Adding information source", source_id=request.metadata.name)
 
-        evt = schema.RemotePredictorRequest(predictor=request, add=True)
+        evt = RemotePredictorRequest(predictor=request, add=True)
         worker.add_external_tool(evt)
 
         # we want to add this info tool to the model/agent
@@ -322,7 +323,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
 
         log.info("Removing information source", source_id=request.metadata.name)
 
-        evt = schema.RemotePredictorRequest(predictor=request, add=False)
+        evt = RemotePredictorRequest(predictor=request, add=False)
         worker.add_external_tool(evt)
 
         return "Information source removed successfully"

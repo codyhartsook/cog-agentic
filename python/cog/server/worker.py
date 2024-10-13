@@ -19,7 +19,7 @@ from ..predictor import (
     check_tool_methods_implemented,
     get_predict,
     load_predictor_from_ref,
-    retrieval_func_from_spec,
+    remote_predictor_retrieval_func,
     run_setup,
 )
 from ..schema import RemotePredictor
@@ -362,8 +362,8 @@ class ChildWorker(_spawn.Process):  # type: ignore
         log.info("adding external info source")
 
         # generate a retrieval function from the openapi spec
-        input_schema, output_schema, retrieval_func = retrieval_func_from_spec(
-            pred.spec.predictor_schema
+        input_schema, output_schema, retrieval_func = remote_predictor_retrieval_func(
+            pred
         )
 
         if check_tool_methods_implemented(self._predictor):
