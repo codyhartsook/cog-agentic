@@ -14,17 +14,34 @@ from typing import Any, Callable, Dict, Optional, Union
 import structlog
 
 from ..json import make_encodeable
-from ..predictor import (BasePredictor, check_tool_methods_implemented,
-                         get_predict, load_predictor_from_ref,
-                         remote_predictor_retrieval_func, run_setup)
+from ..predictor import (
+    BasePredictor, 
+    check_tool_methods_implemented, 
+    remote_predictor_retrieval_func, 
+    get_predict, 
+    load_predictor_from_ref, 
+    run_setup
+)
 from ..schema import RemotePredictor
-from ..types import URLPath
-from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
-                         PredictionOutputType, RemotePredictorRequest,
-                         Shutdown)
-from .exceptions import (CancelationException, FatalWorkerException,
-                         InvalidStateException)
+from ..types import PYDANTIC_V2, URLPath
+from .eventtypes import (
+    Done,
+    Log,
+    PredictionInput,
+    PredictionOutput,
+    RemotePredictorRequest,
+    PredictionOutputType,
+    Shutdown,
+)
+from .exceptions import (
+    CancelationException,
+    FatalWorkerException,
+    InvalidStateException,
+)
 from .helpers import StreamRedirector
+
+if PYDANTIC_V2:
+    from .helpers import unwrap_pydantic_serialization_iterators
 
 _spawn = multiprocessing.get_context("spawn")
 
@@ -388,10 +405,22 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 if isinstance(result, types.GeneratorType):
                     self._events.send(PredictionOutputType(multi=True))
                     for r in result:
-                        self._events.send(PredictionOutput(payload=make_encodeable(r)))
+                        if PYDANTIC_V2:
+                            payload = make_encodeable(
+                                unwrap_pydantic_serialization_iterators(r)
+                            )
+                        else:
+                            payload = make_encodeable(r)
+                        self._events.send(PredictionOutput(payload=payload))
                 else:
                     self._events.send(PredictionOutputType(multi=False))
-                    self._events.send(PredictionOutput(payload=make_encodeable(result)))
+                    if PYDANTIC_V2:
+                        payload = make_encodeable(
+                            unwrap_pydantic_serialization_iterators(result)
+                        )
+                    else:
+                        payload = make_encodeable(result)
+                    self._events.send(PredictionOutput(payload=payload))
         except CancelationException:
             done.canceled = True
         except Exception as e:  # pylint: disable=broad-exception-caught
