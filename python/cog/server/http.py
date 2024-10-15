@@ -28,32 +28,20 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-from ..predictor import (
-    get_input_type,
-    get_output_type,
-    get_predictor_ref,
-    get_training_input_type,
-    get_training_output_type,
-    load_config,
-    load_slim_predictor_from_ref,
-)
+from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
+                         get_training_input_type, get_training_output_type,
+                         load_config, load_slim_predictor_from_ref)
 from ..types import CogConfig
 from .eventtypes import RemotePredictorRequest
 from .probes import ProbeHelper
-from .runner import (
-    PredictionRunner,
-    RunnerBusyError,
-    SetupResult,
-    UnknownPredictionError,
-)
+from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
+                     UnknownPredictionError)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
 if TYPE_CHECKING:
-    from typing import (
-        ParamSpec,  # pylint: disable=import-outside-toplevel
-        TypeVar,
-    )
+    from typing import ParamSpec  # pylint: disable=import-outside-toplevel
+    from typing import TypeVar
 
     P = ParamSpec("P")  # pylint: disable=invalid-name
     T = TypeVar("T")  # pylint: disable=invalid-name

@@ -11,7 +11,8 @@ import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
+from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
+                    Union, cast, get_type_hints)
 
 import requests
 
@@ -25,21 +26,21 @@ from unittest.mock import patch
 import structlog
 import yaml
 from autogen import ConversableAgent
-
 # from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
-
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
 from typing_extensions import Annotated
 
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
 from .schema import RemotePredictor
-from .types import CogConfig, Input, URLPath
+from .types import CogConfig
 from .types import File as CogFile
+from .types import Input
 from .types import Path as CogPath
 from .types import Secret as CogSecret
+from .types import URLPath
 
 log = structlog.get_logger("cog.server.predictor")
 
@@ -147,20 +148,31 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     _generate_pydantic_models_from_spec(pred.spec.predictor_schema)
     Input, Output = _import_generated_models()
 
-    print(f"Input: {Input.schema()}")
+    fields = get_type_hints(Input).items()
+    # Dynamically create the function signature with annotations
+    parameters = [
+        inspect.Parameter(name, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=field_type)
+        for name, field_type in fields
+    ]
+    signature = inspect.Signature(parameters)
 
-    def callback(input: Input) -> Output:
-        log.info(f"Received input: {input}")
+    def callback(*args, **kwargs) -> Output:
+
+        # Create an instance of the Input model
+        input = Input(**kwargs)
 
         # Make an API call to the tool. We could use a redirect here.
-        url = f"http://localhost:5002/predictions/{pred.name}/{pred.namespace}"
+        url = f"http://localhost:5002/predictions/{pred.metadata.name}/{pred.metadata.namespace}"
         resp = requests.post(url, json=input.dict())
         resp.raise_for_status()
 
         print(f"Response: {resp.json()}")
 
-        # return the response
-        return Output(**resp.json())
+        # Assume a best effort to return the response in the Output model. 
+        return resp.json()
+    
+    callback.__signature__ = signature
+    callback.__annotations__ = {name: field_type for name, field_type in fields}
 
     return Input, Output, callback
 

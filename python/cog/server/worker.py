@@ -14,30 +14,16 @@ from typing import Any, Callable, Dict, Optional, Union
 import structlog
 
 from ..json import make_encodeable
-from ..predictor import (
-    BasePredictor,
-    check_tool_methods_implemented,
-    get_predict,
-    load_predictor_from_ref,
-    remote_predictor_retrieval_func,
-    run_setup,
-)
+from ..predictor import (BasePredictor, check_tool_methods_implemented,
+                         get_predict, load_predictor_from_ref,
+                         remote_predictor_retrieval_func, run_setup)
 from ..schema import RemotePredictor
 from ..types import URLPath
-from .eventtypes import (
-    Done,
-    Log,
-    PredictionInput,
-    PredictionOutput,
-    PredictionOutputType,
-    RemotePredictorRequest,
-    Shutdown,
-)
-from .exceptions import (
-    CancelationException,
-    FatalWorkerException,
-    InvalidStateException,
-)
+from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
+                         PredictionOutputType, RemotePredictorRequest,
+                         Shutdown)
+from .exceptions import (CancelationException, FatalWorkerException,
+                         InvalidStateException)
 from .helpers import StreamRedirector
 
 _spawn = multiprocessing.get_context("spawn")
