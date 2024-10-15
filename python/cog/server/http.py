@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
 import structlog
 import uvicorn
 from fastapi import Body, FastAPI, Header, Path, Response
+import yaml
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
@@ -27,6 +28,8 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
+
+
 from ..predictor import (
     get_input_type,
     get_output_type,
@@ -37,6 +40,7 @@ from ..predictor import (
     load_slim_predictor_from_ref,
 )
 from ..types import PYDANTIC_V2, CogConfig
+from .eventtypes import RemotePredictorRequest
 
 if PYDANTIC_V2:
     from .helpers import (
@@ -45,17 +49,14 @@ if PYDANTIC_V2:
     )
 
 from .probes import ProbeHelper
-from .runner import (
-    PredictionRunner,
-    RunnerBusyError,
-    SetupResult,
-    UnknownPredictionError,
-)
+from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
+                     UnknownPredictionError)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
 if TYPE_CHECKING:
-    from typing import ParamSpec, TypeVar  # pylint: disable=import-outside-toplevel
+    from typing import ParamSpec  # pylint: disable=import-outside-toplevel
+    from typing import TypeVar
 
     P = ParamSpec("P")  # pylint: disable=invalid-name
     T = TypeVar("T")  # pylint: disable=invalid-name
@@ -281,6 +282,32 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
             "openapi_url": "/openapi.json",
         }
 
+    @app.get("/identity", response_class=JSONResponse)
+    async def get_identity() -> Any:
+        # Fetch the OpenAPI schema
+        openapi_schema = app.openapi()
+
+        # open our config file cog.yaml
+        with open("cog.yaml") as stream:
+            config = yaml.safe_load(stream)
+
+        this_predictor = schema.RemotePredictor(
+            metadata=schema.Metadata(
+                name=config["metadata"]["name"],
+                namespace=config["metadata"]["namespace"],
+                description=config["metadata"]["description"],
+                published=True,
+            ),
+            spec=schema.Spec(
+                access_level="public",
+                owner="cog",
+                consumes_apis=[],
+                predictor_schema=openapi_schema,  # Attach the OpenAPI schema here
+            ),
+        )
+
+        return this_predictor.dict()
+
     @app.get("/health-check")
     async def healthcheck() -> Any:
         if app.state.health == Health.READY:
@@ -289,6 +316,40 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
             health = app.state.health
         setup = app.state.setup_result.to_dict() if app.state.setup_result else {}
         return jsonable_encoder({"status": health.name, "setup": setup})
+
+    @app.post("/add-external-info-tool")
+    async def add_external_info_tool(
+        request: schema.RemotePredictor = Body(..., title="Information Source Request"),
+        traceparent: Optional[str] = Header(default=None, include_in_schema=False),
+        tracestate: Optional[str] = Header(default=None, include_in_schema=False),
+    ) -> Any:
+        """
+        Add a new information source to the model
+        """
+        log.info("Adding information source", source_id=request.metadata.name)
+
+        evt = RemotePredictorRequest(predictor=request, add=True)
+        worker.add_external_tool(evt)
+
+        # we want to add this info tool to the model/agent
+        return "Information source added successfully"
+
+    @app.post("/remove-external-info-tool")
+    async def remove_external_info_tool(
+        request: schema.RemotePredictor = Body(..., title="Information Source Request"),
+        traceparent: Optional[str] = Header(default=None, include_in_schema=False),
+        tracestate: Optional[str] = Header(default=None, include_in_schema=False),
+    ) -> Any:
+        """
+        Remove an information source from the model
+        """
+
+        log.info("Removing information source", source_id=request.metadata.name)
+
+        evt = RemotePredictorRequest(predictor=request, add=False)
+        worker.add_external_tool(evt)
+
+        return "Information source removed successfully"
 
     @limited
     @app.post(

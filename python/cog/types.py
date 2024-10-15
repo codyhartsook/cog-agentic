@@ -53,6 +53,21 @@ class CogBuildConfig(TypedDict, total=False):  # pylint: disable=too-many-ancest
     run: Optional[Union[List[str], List[Dict[str, Any]]]]
 
 
+"""class ExternalInfoTool():
+    id: str
+    name: str
+    description: str
+    func: Callable[..., Any]
+    args_schema: BaseModel
+
+    def __init__(self, id: str, name: str, description: str, func: Callable[..., Any], args_schema: BaseModel):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.func = func
+        self.args_schema = args_schema"""
+
+
 def Input(  # pylint: disable=invalid-name, too-many-arguments
     default: Any = ...,
     description: str = None,
