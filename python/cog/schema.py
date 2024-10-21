@@ -74,8 +74,8 @@ class Metadata(pydantic.BaseModel):
 class Spec(pydantic.BaseModel):
     owner: str
     access_level: str
-    consumes_apis: t.List[str]
-    predictor_schema: t.Dict[str, t.Any]  # OpenAPI schema will be a dictionary
+    consumes_apis: List[str]
+    predictor_schema: Dict[str, Any]  # OpenAPI schema will be a dictionary
 
 
 class RemotePredictor(pydantic.BaseModel, extra=pydantic.Extra.allow):

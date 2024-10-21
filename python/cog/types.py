@@ -7,16 +7,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 import urllib.response
-from typing import (
-    Any,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Iterator, List, Optional, Type, TypeVar, Union
 
 import pydantic
 import requests
@@ -51,21 +42,6 @@ class CogBuildConfig(TypedDict, total=False):  # pylint: disable=too-many-ancest
     python_requirements: Optional[str]
     python_version: Optional[str]
     run: Optional[Union[List[str], List[Dict[str, Any]]]]
-
-
-"""class ExternalInfoTool():
-    id: str
-    name: str
-    description: str
-    func: Callable[..., Any]
-    args_schema: BaseModel
-
-    def __init__(self, id: str, name: str, description: str, func: Callable[..., Any], args_schema: BaseModel):
-        self.id = id
-        self.name = name
-        self.description = description
-        self.func = func
-        self.args_schema = args_schema"""
 
 
 def Input(  # pylint: disable=invalid-name, too-many-arguments
@@ -163,9 +139,8 @@ class File(io.IOBase):
             source: Type[Any],  # pylint: disable=unused-argument
             handler: "pydantic.GetCoreSchemaHandler",  # pylint: disable=unused-argument
         ) -> "CoreSchema":
-            from pydantic_core import (  # pylint: disable=import-outside-toplevel
-                core_schema,
-            )
+            from pydantic_core import \
+                core_schema  # pylint: disable=import-outside-toplevel
 
             return core_schema.union_schema(
                 [
@@ -220,9 +195,8 @@ class Path(pathlib.PosixPath):  # pylint: disable=abstract-method
             source: Type[Any],  # pylint: disable=unused-argument
             handler: "pydantic.GetCoreSchemaHandler",  # pylint: disable=unused-argument
         ) -> "CoreSchema":
-            from pydantic_core import (  # pylint: disable=import-outside-toplevel
-                core_schema,
-            )
+            from pydantic_core import \
+                core_schema  # pylint: disable=import-outside-toplevel
 
             return core_schema.union_schema(
                 [
@@ -402,9 +376,8 @@ class ConcatenateIterator(Iterator[Item]):  # pylint: disable=abstract-method
             source: Type[Any],  # pylint: disable=unused-argument
             handler: "pydantic.GetCoreSchemaHandler",  # pylint: disable=unused-argument
         ) -> "CoreSchema":
-            from pydantic_core import (  # pylint: disable=import-outside-toplevel
-                core_schema,
-            )
+            from pydantic_core import \
+                core_schema  # pylint: disable=import-outside-toplevel
 
             return core_schema.union_schema(
                 [

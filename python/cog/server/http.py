@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
 
 import structlog
 import uvicorn
-from fastapi import Body, FastAPI, Header, Path, Response
 import yaml
+from fastapi import Body, FastAPI, Header, Path, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
@@ -28,17 +28,9 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-
-
-from ..predictor import (
-    get_input_type,
-    get_output_type,
-    get_predictor_ref,
-    get_training_input_type,
-    get_training_output_type,
-    load_config,
-    load_slim_predictor_from_ref,
-)
+from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
+                         get_training_input_type, get_training_output_type,
+                         load_config, load_slim_predictor_from_ref)
 from ..types import PYDANTIC_V2, CogConfig
 from .eventtypes import RemotePredictorRequest
 

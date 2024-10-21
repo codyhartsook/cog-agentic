@@ -31,7 +31,11 @@ dependencies = [
   'typing-compat; python_version < "3.8"',
   "typing_extensions>=4.4.0",
   "uvicorn[standard]>=0.12,<1",
-  #"langchain>=0.2.9",
+  "traceloop-sdk",
+  "langchain",
+  "langchain-community",
+  "langchain-openai",
+  "langchain-core",
   "autogen>=0.3.0",
   "datamodel-code-generator>=0.26.0",
 ]

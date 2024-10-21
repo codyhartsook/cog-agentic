@@ -12,32 +12,21 @@ from multiprocessing.connection import Connection
 from typing import Any, Callable, Dict, Optional, Union
 
 import structlog
+from opentelemetry import trace
+from traceloop.sdk import Traceloop
 
 from ..json import make_encodeable
-from ..predictor import (
-    BasePredictor, 
-    check_tool_methods_implemented, 
-    remote_predictor_retrieval_func, 
-    get_predict, 
-    load_predictor_from_ref, 
-    run_setup
-)
+from ..predictor import (BasePredictor, check_tool_methods_implemented,
+                         get_predict, load_predictor_from_ref,
+                         remote_predictor_retrieval_func, run_setup,
+                         tooling_capable_agents)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
-from .eventtypes import (
-    Done,
-    Log,
-    PredictionInput,
-    PredictionOutput,
-    RemotePredictorRequest,
-    PredictionOutputType,
-    Shutdown,
-)
-from .exceptions import (
-    CancelationException,
-    FatalWorkerException,
-    InvalidStateException,
-)
+from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
+                         PredictionOutputType, RemotePredictorRequest,
+                         Shutdown)
+from .exceptions import (CancelationException, FatalWorkerException,
+                         InvalidStateException)
 from .helpers import StreamRedirector
 
 if PYDANTIC_V2:
@@ -290,6 +279,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
         self._tee_output = tee_output
         self._cancelable = False
 
+        self.tracer = trace.get_tracer(__name__)
         super().__init__()
 
     def run(self) -> None:
@@ -379,6 +369,10 @@ class ChildWorker(_spawn.Process):  # type: ignore
         else:
             log.info("external info source methods NOT implemented")
 
+            # get the agent atomic types
+            # get the appropriate agent adapter
+            # add the tool to the agent
+
     def remove_external_tool(self, pred: RemotePredictor) -> None:
         assert self._predictor
         log.info("removing external info source")
@@ -399,28 +393,38 @@ class ChildWorker(_spawn.Process):  # type: ignore
         self._cancelable = True
         try:
             predict = get_predict(self._predictor)
-            result = predict(**payload)
 
-            if result:
-                if isinstance(result, types.GeneratorType):
-                    self._events.send(PredictionOutputType(multi=True))
-                    for r in result:
+            print("Configuring Traceloop..")
+            os.environ["TRACELOOP_BASE_URL"] = "http://localhost:4318"
+            Traceloop.init(app_name=__name__, disable_batch=True, metrics_exporter=None)
+
+            print("Traceloop configured")
+
+            with trace.get_tracer(__name__).start_as_current_span("predictor_run") as span:
+                span.set_attribute("input", str(payload))
+
+                result = predict(**payload)
+
+                if result:
+                    if isinstance(result, types.GeneratorType):
+                        self._events.send(PredictionOutputType(multi=True))
+                        for r in result:
+                            if PYDANTIC_V2:
+                                payload = make_encodeable(
+                                    unwrap_pydantic_serialization_iterators(r)
+                                )
+                            else:
+                                payload = make_encodeable(r)
+                            self._events.send(PredictionOutput(payload=payload))
+                    else:
+                        self._events.send(PredictionOutputType(multi=False))
                         if PYDANTIC_V2:
                             payload = make_encodeable(
-                                unwrap_pydantic_serialization_iterators(r)
+                                unwrap_pydantic_serialization_iterators(result)
                             )
                         else:
-                            payload = make_encodeable(r)
+                            payload = make_encodeable(result)
                         self._events.send(PredictionOutput(payload=payload))
-                else:
-                    self._events.send(PredictionOutputType(multi=False))
-                    if PYDANTIC_V2:
-                        payload = make_encodeable(
-                            unwrap_pydantic_serialization_iterators(result)
-                        )
-                    else:
-                        payload = make_encodeable(result)
-                    self._events.send(PredictionOutput(payload=payload))
         except CancelationException:
             done.canceled = True
         except Exception as e:  # pylint: disable=broad-exception-caught

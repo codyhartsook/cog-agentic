@@ -29,7 +29,7 @@ import pydantic
 import structlog
 import yaml
 from autogen import ConversableAgent
-# from langchain.agents import AgentExecutor
+from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
@@ -37,19 +37,11 @@ from typing_extensions import Annotated
 
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
-from .types import (
-    PYDANTIC_V2,
-    CogConfig,
-    Input,
-    URLPath,
-)
-from .types import (
-    File as CogFile,
-)
-from .types import (
-    Path as CogPath,
-)
 from .schema import RemotePredictor
+from .types import PYDANTIC_V2, CogConfig
+from .types import File as CogFile
+from .types import Input
+from .types import Path as CogPath
 from .types import Secret as CogSecret
 from .types import URLPath
 
@@ -95,23 +87,19 @@ class BasePredictor(ABC):
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
 
-    def tooling_capable_agents(self) -> dict:
-        class AgentExecutor:  # temporary fix for langchain dependency on pydantic > 2
-            pass
+def tooling_capable_agents(predictor: BasePredictor) -> dict:
+    """
+    Return a dictionary of agents that are capable of using tools. This will 
+    be used to dynamically add tools to the agents.
+    """
+    agent_atomics = {ConversableAgent: {}, AgentExecutor: {}}
+    for key, value in predictor.__dict__.items():
+        if isinstance(value, ConversableAgent):
+            agent_atomics[ConversableAgent][key] = value
+        if isinstance(value, AgentExecutor):
+            agent_atomics[AgentExecutor][key] = value
 
-        """
-        Return a dictionary of agents that are capable of using tools. This will 
-        be used to dynamically add tools to the agents.
-        """
-        agent_atomics = {ConversableAgent: {}, AgentExecutor: {}}
-        for key, value in self.__dict__.items():
-            if isinstance(value, ConversableAgent):
-                agent_atomics[ConversableAgent][key] = value
-            if isinstance(value, AgentExecutor):
-                agent_atomics[AgentExecutor][key] = value
-
-        return agent_atomics
-
+    return agent_atomics
 
 def _generate_pydantic_models_from_spec(
     openapi_spec: Dict[str, Any], output_file: str = "model.py"
