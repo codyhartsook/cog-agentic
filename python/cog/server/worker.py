@@ -12,7 +12,9 @@ from multiprocessing.connection import Connection
 from typing import Any, Callable, Dict, Optional, Union
 
 import structlog
+import yaml
 from opentelemetry import trace
+from opentelemetry.propagate import extract
 from traceloop.sdk import Traceloop
 
 from ..json import make_encodeable
@@ -28,6 +30,7 @@ from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
 from .exceptions import (CancelationException, FatalWorkerException,
                          InvalidStateException)
 from .helpers import StreamRedirector
+from .telemetry import TraceContext, current_trace_context
 
 if PYDANTIC_V2:
     from .helpers import unwrap_pydantic_serialization_iterators
@@ -62,6 +65,7 @@ class Worker:
         self._subscribers: Dict[int, Callable[[_PublicEventType], None]] = {}
 
         self._predict_payload: Optional[Dict[str, Any]] = None
+        self._trace_context: Optional[TraceContext] = None
         self._predict_start = threading.Event()  # set when a prediction is started
 
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -77,12 +81,15 @@ class Worker:
         return result
 
     def predict(self, payload: Dict[str, Any]) -> "Future[Done]":
+        ctx = current_trace_context()
+
         self._assert_state(WorkerState.READY)
         self._state = WorkerState.PROCESSING
         self._allow_cancel = True
         result = Future()
         self._result = result
         self._predict_payload = payload
+        self._trace_context = ctx
         self._predict_start.set()
         return result
 
@@ -215,7 +222,7 @@ class Worker:
                 self._publish(done)
             else:
                 # Start the prediction
-                self._events.send(PredictionInput(payload=self._predict_payload))
+                self._events.send(PredictionInput(payload=self._predict_payload, trace_context=self._trace_context))
 
                 # Consume and publish prediction events
                 done = self._consume_events_until_done()
@@ -279,8 +286,13 @@ class ChildWorker(_spawn.Process):  # type: ignore
         self._tee_output = tee_output
         self._cancelable = False
 
-        self.tracer = trace.get_tracer(__name__)
         super().__init__()
+        self._load_config()
+
+    def _load_config(self) -> None:
+        with open("cog.yaml") as stream:
+            config = yaml.safe_load(stream)
+            self._config = config
 
     def run(self) -> None:
         # If we're running at a shell, SIGINT will be sent to every process in
@@ -336,12 +348,15 @@ class ChildWorker(_spawn.Process):  # type: ignore
             self._events.send(done)
 
     def _loop(self, redirector: StreamRedirector) -> None:
+        os.environ["TRACELOOP_BASE_URL"] = "http://localhost:4318"
+        Traceloop.init(app_name=self._config["metadata"]["name"]+"predictor", disable_batch=True, metrics_exporter=None)
+        
         while True:
             ev = self._events.recv()
             if isinstance(ev, Shutdown):
                 break
             if isinstance(ev, PredictionInput):
-                self._predict(ev.payload, redirector)
+                self._predict(ev.payload, ev.trace_context, redirector)
             elif isinstance(ev, RemotePredictorRequest):
                 if ev.add:
                     self.add_external_tool(ev.predictor)
@@ -385,6 +400,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
     def _predict(
         self,
         payload: Dict[str, Any],
+        trace_context: TraceContext,
         redirector: StreamRedirector,
     ) -> None:
         assert self._predictor
@@ -394,13 +410,9 @@ class ChildWorker(_spawn.Process):  # type: ignore
         try:
             predict = get_predict(self._predictor)
 
-            print("Configuring Traceloop..")
-            os.environ["TRACELOOP_BASE_URL"] = "http://localhost:4318"
-            Traceloop.init(app_name=__name__, disable_batch=True, metrics_exporter=None)
+            ctx = extract(carrier=trace_context)
 
-            print("Traceloop configured")
-
-            with trace.get_tracer(__name__).start_as_current_span("predictor_run") as span:
+            with trace.get_tracer(self._config["metadata"]["name"]+"predictor").start_as_current_span("predict", context=ctx) as span:
                 span.set_attribute("input", str(payload))
 
                 result = predict(**payload)

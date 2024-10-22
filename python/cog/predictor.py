@@ -16,6 +16,8 @@ from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
                     Union, cast, get_type_hints)
 
 import requests
+from opentelemetry import trace
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 try:
     from typing import Literal, get_args, get_origin
@@ -156,19 +158,18 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     signature = inspect.Signature(parameters)
 
     def callback(*args, **kwargs) -> Output:
-
         # Create an instance of the Input model
         input = Input(**kwargs)
 
-        # Make an API call to the tool. We could use a redirect here.
-        url = f"http://localhost:5002/predictions/{pred.metadata.name}/{pred.metadata.namespace}"
-        resp = requests.post(url, json=input.dict())
-        resp.raise_for_status()
+        with trace.get_tracer("predictor").start_as_current_span("tool_call"):
+            url = f"http://localhost:5002/predictions/{pred.metadata.namespace}/{pred.metadata.name}"
+            resp = requests.post(url, json=input.dict())
+            resp.raise_for_status()
 
-        print(f"Response: {resp.json()}")
+            print(f"Response: {resp.json()}")
 
-        # Assume a best effort to return the response in the Output model. 
-        return resp.json()
+            # Assume a best effort to return the response in the Output model. 
+            return resp.json()
     
     callback.__signature__ = signature
     callback.__annotations__ = {name: field_type for name, field_type in fields}

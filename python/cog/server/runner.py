@@ -22,6 +22,7 @@ from .eventtypes import Done, Log, PredictionOutput, PredictionOutputType
 
 if PYDANTIC_V2:
     from .helpers import unwrap_pydantic_serialization_iterators
+
 from .telemetry import current_trace_context
 from .useragent import get_user_agent
 from .webhook import SKIP_START_EVENT, webhook_caller_filtered

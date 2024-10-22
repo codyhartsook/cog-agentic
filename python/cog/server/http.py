@@ -33,6 +33,7 @@ from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
                          load_config, load_slim_predictor_from_ref)
 from ..types import PYDANTIC_V2, CogConfig
 from .eventtypes import RemotePredictorRequest
+from .telemetry import current_trace_context
 
 if PYDANTIC_V2:
     from .helpers import (
@@ -360,6 +361,8 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         """
         # TODO: spec-compliant parsing of Prefer header.
         respond_async = prefer == "respond-async"
+
+        log.info("Received prediction request", traceparent=traceparent)
 
         with trace_context(make_trace_context(traceparent, tracestate)):
             return _predict(
