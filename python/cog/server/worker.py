@@ -349,7 +349,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
 
     def _loop(self, redirector: StreamRedirector) -> None:
         os.environ["TRACELOOP_BASE_URL"] = "http://localhost:4318"
-        Traceloop.init(app_name=self._config["metadata"]["name"]+"predictor", disable_batch=True, metrics_exporter=None)
+        Traceloop.init(app_name=self._config["metadata"]["name"]+"-predictor", disable_batch=True, metrics_exporter=None)
         
         while True:
             ev = self._events.recv()
@@ -412,7 +412,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
 
             ctx = extract(carrier=trace_context)
 
-            with trace.get_tracer(self._config["metadata"]["name"]+"predictor").start_as_current_span("predict", context=ctx) as span:
+            with trace.get_tracer(self._config["metadata"]["name"]+"-predictor").start_as_current_span("predict", context=ctx) as span:
                 span.set_attribute("input", str(payload))
 
                 result = predict(**payload)

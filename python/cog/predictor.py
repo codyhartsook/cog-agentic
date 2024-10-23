@@ -17,7 +17,9 @@ from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
 
 import requests
 from opentelemetry import trace
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+from .server.telemetry import (current_trace_context, make_trace_context,
+                               trace_context)
 
 try:
     from typing import Literal, get_args, get_origin
@@ -143,6 +145,15 @@ def _import_generated_models(output_file: str = "model.py"):
 
     return Input, Output
 
+# Function to inject trace context headers into an HTTP request
+def add_trace_headers(headers: dict) -> dict:
+    trace_ctx = current_trace_context()
+    if trace_ctx:
+        if "traceparent" in trace_ctx:
+            headers["traceparent"] = trace_ctx["traceparent"]
+        if "tracestate" in trace_ctx:
+            headers["tracestate"] = trace_ctx["tracestate"]
+    return headers
 
 def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     """Generate Pydantic models from OpenAPI spec and return the models."""
@@ -163,10 +174,18 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
 
         with trace.get_tracer("predictor").start_as_current_span("tool_call"):
             url = f"http://localhost:5002/predictions/{pred.metadata.namespace}/{pred.metadata.name}"
-            resp = requests.post(url, json=input.dict())
-            resp.raise_for_status()
+            
+            # Inject the trace context into the request headers
+            span_context = trace.get_current_span().get_span_context()
+            # Extract trace and span IDs
+            trace_id = span_context.trace_id
+            span_id = span_context.span_id
+            trace_flags = span_context.trace_flags
 
-            print(f"Response: {resp.json()}")
+            headers = {}
+            headers["traceparent"] = f"00-{trace_id:032x}-{span_id:016x}-{trace_flags:02x}"
+
+            resp = requests.post(url, json=input.dict(), headers=headers)
 
             # Assume a best effort to return the response in the Output model. 
             return resp.json()
