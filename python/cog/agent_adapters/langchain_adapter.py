@@ -7,10 +7,25 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel
 
 
-def add_tool(name: str, desc: str, schema: BaseModel, func: Callable[..., Any], runnable: Runnable) -> None:
+def add_tool(
+    name: str,
+    desc: str,
+    schema: BaseModel,
+    func: Callable[..., Any],
+    agents: dict[str, Runnable],
+) -> None:
     """
     Add a tool to this agent executor and update tool partial variables
     """
+
+    if agents is None:
+        return
+
+    if len(agents) == 0:
+        return
+
+    runnable = list(agents.values())[0]
+
     print(f"Adding tool: {name}")
     print(f"schema: {schema}")
 
@@ -21,16 +36,18 @@ def add_tool(name: str, desc: str, schema: BaseModel, func: Callable[..., Any], 
         args_schema=schema,
         # tags=tags,
     )
-        
+
     # add the tool to the agent executor and update the partial variables
     _update_agent_tooling_internals(tool, runnable)
+
 
 def remove_tool(name: str, desc: str, runnable: Runnable) -> None:
     for tool in runnable.tools:
         if tool.name == name and tool.description == desc:
             runnable.tools.remove(tool)
 
-def _update_agent_tooling_internals(tool: StructuredTool, runnable: Runnable):
+
+def _update_agent_tooling_internals(tool: StructuredTool, runnable: Runnable) -> None:
     """
     Add the new tool to this agent executor. For langchain agents we
     must update the prompt partial variables to achieve dynamic tool changes.
@@ -51,9 +68,7 @@ def _update_agent_tooling_internals(tool: StructuredTool, runnable: Runnable):
             if hasattr(component, "kwargs"):
                 # TODO: handle the case where the component has open-ai-functions kwargs
                 component.kwargs = {
-                    "tools": [
-                        convert_to_openai_tool(t) for t in runnable.tools
-                    ],
+                    "tools": [convert_to_openai_tool(t) for t in runnable.tools],
                 }
 
             # check if component has partial variables

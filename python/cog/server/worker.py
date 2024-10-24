@@ -18,17 +18,31 @@ from opentelemetry.propagate import extract
 from traceloop.sdk import Traceloop
 
 from ..json import make_encodeable
-from ..predictor import (BasePredictor, check_tool_methods_implemented,
-                         get_predict, load_predictor_from_ref,
-                         remote_predictor_retrieval_func, run_setup,
-                         tooling_capable_agents)
+from ..predictor import (
+    BasePredictor,
+    check_tool_methods_implemented,
+    get_predict,
+    load_predictor_from_ref,
+    remote_predictor_retrieval_func,
+    run_setup,
+    update_agent_tooling,
+)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
-from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
-                         PredictionOutputType, RemotePredictorRequest,
-                         Shutdown)
-from .exceptions import (CancelationException, FatalWorkerException,
-                         InvalidStateException)
+from .eventtypes import (
+    Done,
+    Log,
+    PredictionInput,
+    PredictionOutput,
+    PredictionOutputType,
+    RemotePredictorRequest,
+    Shutdown,
+)
+from .exceptions import (
+    CancelationException,
+    FatalWorkerException,
+    InvalidStateException,
+)
 from .helpers import StreamRedirector
 from .telemetry import TraceContext, current_trace_context
 
@@ -222,7 +236,11 @@ class Worker:
                 self._publish(done)
             else:
                 # Start the prediction
-                self._events.send(PredictionInput(payload=self._predict_payload, trace_context=self._trace_context))
+                self._events.send(
+                    PredictionInput(
+                        payload=self._predict_payload, trace_context=self._trace_context
+                    )
+                )
 
                 # Consume and publish prediction events
                 done = self._consume_events_until_done()
@@ -349,8 +367,12 @@ class ChildWorker(_spawn.Process):  # type: ignore
 
     def _loop(self, redirector: StreamRedirector) -> None:
         os.environ["TRACELOOP_BASE_URL"] = "http://localhost:4318"
-        Traceloop.init(app_name=self._config["metadata"]["name"]+"-predictor", disable_batch=True, metrics_exporter=None)
-        
+        Traceloop.init(
+            app_name=self._config["metadata"]["name"] + "-predictor",
+            disable_batch=True,
+            metrics_exporter=None,
+        )
+
         while True:
             ev = self._events.recv()
             if isinstance(ev, Shutdown):
@@ -384,9 +406,13 @@ class ChildWorker(_spawn.Process):  # type: ignore
         else:
             log.info("external info source methods NOT implemented")
 
-            # get the agent atomic types
-            # get the appropriate agent adapter
-            # add the tool to the agent
+            update_agent_tooling(
+                pred.metadata.name,
+                pred.metadata.description,
+                input_schema,
+                retrieval_func,
+                self._predictor,
+            )
 
     def remove_external_tool(self, pred: RemotePredictor) -> None:
         assert self._predictor
@@ -412,7 +438,9 @@ class ChildWorker(_spawn.Process):  # type: ignore
 
             ctx = extract(carrier=trace_context)
 
-            with trace.get_tracer(self._config["metadata"]["name"]+"-predictor").start_as_current_span("predict", context=ctx) as span:
+            with trace.get_tracer(
+                self._config["metadata"]["name"] + "-predictor"
+            ).start_as_current_span("predict", context=ctx) as span:
                 span.set_attribute("input", str(payload))
 
                 result = predict(**payload)

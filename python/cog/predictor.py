@@ -12,14 +12,21 @@ import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
-                    Union, cast, get_type_hints)
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+    get_type_hints,
+)
 
 import requests
 from opentelemetry import trace
-
-from .server.telemetry import (current_trace_context, make_trace_context,
-                               trace_context)
 
 try:
     from typing import Literal, get_args, get_origin
@@ -36,18 +43,19 @@ from autogen import ConversableAgent
 from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
+
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
 from typing_extensions import Annotated
 
+from .agent_adapters.autogen_adapter import add_tool as add_tool_autogen
+from .agent_adapters.langchain_adapter import add_tool as add_tool_langchain
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
 from .schema import RemotePredictor
-from .types import PYDANTIC_V2, CogConfig
+from .types import PYDANTIC_V2, CogConfig, Input, URLPath
 from .types import File as CogFile
-from .types import Input
 from .types import Path as CogPath
 from .types import Secret as CogSecret
-from .types import URLPath
 
 log = structlog.get_logger("cog.server.predictor")
 
@@ -91,9 +99,10 @@ class BasePredictor(ABC):
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
 
-def tooling_capable_agents(predictor: BasePredictor) -> dict:
+
+def update_agent_tooling(name, desc, schema, func, predictor: BasePredictor) -> None:
     """
-    Return a dictionary of agents that are capable of using tools. This will 
+    Return a dictionary of agents that are capable of using tools. This will
     be used to dynamically add tools to the agents.
     """
     agent_atomics = {ConversableAgent: {}, AgentExecutor: {}}
@@ -103,7 +112,9 @@ def tooling_capable_agents(predictor: BasePredictor) -> dict:
         if isinstance(value, AgentExecutor):
             agent_atomics[AgentExecutor][key] = value
 
-    return agent_atomics
+    add_tool_autogen(name, desc, schema, func, agent_atomics[ConversableAgent])
+    add_tool_langchain(name, desc, schema, func, agent_atomics[AgentExecutor])
+
 
 def _generate_pydantic_models_from_spec(
     openapi_spec: Dict[str, Any], output_file: str = "model.py"
@@ -145,15 +156,6 @@ def _import_generated_models(output_file: str = "model.py"):
 
     return Input, Output
 
-# Function to inject trace context headers into an HTTP request
-def add_trace_headers(headers: dict) -> dict:
-    trace_ctx = current_trace_context()
-    if trace_ctx:
-        if "traceparent" in trace_ctx:
-            headers["traceparent"] = trace_ctx["traceparent"]
-        if "tracestate" in trace_ctx:
-            headers["tracestate"] = trace_ctx["tracestate"]
-    return headers
 
 def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     """Generate Pydantic models from OpenAPI spec and return the models."""
@@ -163,7 +165,9 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
     fields = get_type_hints(Input).items()
     # Dynamically create the function signature with annotations
     parameters = [
-        inspect.Parameter(name, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=field_type)
+        inspect.Parameter(
+            name, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=field_type
+        )
         for name, field_type in fields
     ]
     signature = inspect.Signature(parameters)
@@ -174,7 +178,7 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
 
         with trace.get_tracer("predictor").start_as_current_span("tool_call"):
             url = f"http://localhost:5002/predictions/{pred.metadata.namespace}/{pred.metadata.name}"
-            
+
             # Inject the trace context into the request headers
             span_context = trace.get_current_span().get_span_context()
             # Extract trace and span IDs
@@ -183,13 +187,15 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
             trace_flags = span_context.trace_flags
 
             headers = {}
-            headers["traceparent"] = f"00-{trace_id:032x}-{span_id:016x}-{trace_flags:02x}"
+            headers["traceparent"] = (
+                f"00-{trace_id:032x}-{span_id:016x}-{trace_flags:02x}"
+            )
 
             resp = requests.post(url, json=input.dict(), headers=headers)
 
-            # Assume a best effort to return the response in the Output model. 
+            # Assume a best effort to return the response in the Output model.
             return resp.json()
-    
+
     callback.__signature__ = signature
     callback.__annotations__ = {name: field_type for name, field_type in fields}
 
