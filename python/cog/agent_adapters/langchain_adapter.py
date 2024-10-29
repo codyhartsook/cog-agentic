@@ -18,9 +18,6 @@ def add_tool(
     Add a tool to this agent executor and update tool partial variables
     """
 
-    if agents is None:
-        return
-
     if len(agents) == 0:
         return
 
@@ -40,11 +37,15 @@ def add_tool(
     # add the tool to the agent executor and update the partial variables
     _update_agent_tooling_internals(tool, runnable)
 
+    print(f"Agent now has {len(runnable.tools)} tools")
+
 
 def remove_tool(name: str, desc: str, runnable: Runnable) -> None:
     for tool in runnable.tools:
         if tool.name == name and tool.description == desc:
             runnable.tools.remove(tool)
+
+    print(f"Agent now has {len(runnable.tools)} tools")
 
 
 def _update_agent_tooling_internals(tool: StructuredTool, runnable: Runnable) -> None:

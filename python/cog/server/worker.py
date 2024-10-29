@@ -18,31 +18,17 @@ from opentelemetry.propagate import extract
 from traceloop.sdk import Traceloop
 
 from ..json import make_encodeable
-from ..predictor import (
-    BasePredictor,
-    check_tool_methods_implemented,
-    get_predict,
-    load_predictor_from_ref,
-    remote_predictor_retrieval_func,
-    run_setup,
-    update_agent_tooling,
-)
+from ..predictor import (BasePredictor, check_tool_methods_implemented,
+                         get_predict, load_predictor_from_ref,
+                         remote_predictor_retrieval_func, run_setup,
+                         update_agent_tooling)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
-from .eventtypes import (
-    Done,
-    Log,
-    PredictionInput,
-    PredictionOutput,
-    PredictionOutputType,
-    RemotePredictorRequest,
-    Shutdown,
-)
-from .exceptions import (
-    CancelationException,
-    FatalWorkerException,
-    InvalidStateException,
-)
+from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
+                         PredictionOutputType, RemotePredictorRequest,
+                         Shutdown)
+from .exceptions import (CancelationException, FatalWorkerException,
+                         InvalidStateException)
 from .helpers import StreamRedirector
 from .telemetry import TraceContext, current_trace_context
 
@@ -422,6 +408,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
             self._predictor.remove_tool(pred.metadata.name)
         else:
             log.info("external info source methods NOT implemented")
+            update_agent_tooling(pred.metadata.name, pred.metadata.description, None, None, self._predictor, remove=True)
 
     def _predict(
         self,

@@ -22,7 +22,6 @@ def add_tool(
         return
 
     print(f"Adding tool: {name}")
-    print(f"schema: {schema}")
 
     caller, executor = get_caller_and_executor(agents)
 
@@ -34,8 +33,7 @@ def add_tool(
         description=desc,  # The description of the tool.
     )
 
-    print(caller.llm_config["tools"])
-
+    print(f"Agent now has {len(caller.llm_config["tools"])} tools")
 
 def get_caller_and_executor(
     agents: dict[str, ConversableAgent],
@@ -64,3 +62,5 @@ def remove_tool(
 ) -> None:
     caller.update_tool_signature(name, is_remove=True)
     # remove from executor?
+
+    print(f"Agent now has {len(caller.llm_config['tools'])} tools")
