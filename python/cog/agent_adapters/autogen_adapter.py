@@ -3,6 +3,32 @@ from typing import Any, Callable
 from autogen import ConversableAgent, register_function
 from pydantic import BaseModel
 
+from ..schema import RemotePredictor
+
+
+def get_tools(agent: ConversableAgent) -> list[RemotePredictor]:
+    tools = []
+
+    if hasattr(agent, "llm_config") and agent.llm_config and "tools" in agent.llm_config:
+        for tool in agent.llm_config["tools"]:
+            # inspect the input schema of the tool to determine if we added it
+            # if we added it, create a remote predictor object
+
+            
+
+            # create a remote predictor object from the tool
+            remote_predictor = RemotePredictor(
+                metadata={
+                    "name": tool["function"]["name"],
+                    "namespace": "unknown",
+                    "description": tool["function"]["description"],
+                },
+                spec={}
+            )
+
+            tools.append(remote_predictor)
+
+    return tools
 
 def add_tool(
     name: str,
@@ -14,9 +40,6 @@ def add_tool(
     """
     Add a tool to this agent executor and update tool partial variables
     """
-
-    if agents is None:
-        return
 
     if len(agents) < 2:
         return
@@ -57,10 +80,14 @@ def get_caller_and_executor(
 def remove_tool(
     name: str,
     desc: str,
-    caller: ConversableAgent,
-    executor: ConversableAgent,
+    agents: dict[str, ConversableAgent],
 ) -> None:
+    caller, _ = get_caller_and_executor(agents)
+
     caller.update_tool_signature(name, is_remove=True)
     # remove from executor?
 
-    print(f"Agent now has {len(caller.llm_config['tools'])} tools")
+    if hasattr(caller, "llm_config") and caller.llm_config and "tools" in caller.llm_config:
+        print(f"Agent now has {len(caller.llm_config['tools'])} tools")
+    else:
+        print("Agent now has 0 tools")

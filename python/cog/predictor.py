@@ -37,8 +37,10 @@ from pydantic.fields import FieldInfo
 from typing_extensions import Annotated
 
 from .agent_adapters.autogen_adapter import add_tool as add_tool_autogen
+from .agent_adapters.autogen_adapter import get_tools as get_tools_autogen
 from .agent_adapters.autogen_adapter import remove_tool as remove_tool_autogen
 from .agent_adapters.langchain_adapter import add_tool as add_tool_langchain
+from .agent_adapters.langchain_adapter import get_tools as get_tools_langchain
 from .agent_adapters.langchain_adapter import \
     remove_tool as remove_tool_langchain
 from .code_xforms import load_module_from_string, strip_model_source_code
@@ -93,6 +95,17 @@ class BasePredictor(ABC):
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
 
+def get_tools(predictor: BasePredictor) -> list[RemotePredictor]:
+    tools = []
+
+    for key, value in predictor.__dict__.items():
+        if isinstance(value, ConversableAgent):
+            tools.extend(get_tools_autogen(value))
+        if isinstance(value, AgentExecutor):
+            print(f"getting tools from {value}")
+            tools.extend(get_tools_langchain(value))
+
+    return tools
 
 def update_agent_tooling(name: str, desc: str, schema, func, predictor: BasePredictor, remove: bool=False) -> None:
     """
@@ -106,7 +119,7 @@ def update_agent_tooling(name: str, desc: str, schema, func, predictor: BasePred
         if isinstance(value, AgentExecutor):
             agent_atomics[AgentExecutor][key] = value
     if remove:
-        remove_tool_autogen(name, desc, agent_atomics[ConversableAgent], None)
+        remove_tool_autogen(name, desc, agent_atomics[ConversableAgent])
         remove_tool_langchain(name, desc, agent_atomics[AgentExecutor])
     else:
         add_tool_autogen(name, desc, schema, func, agent_atomics[ConversableAgent])

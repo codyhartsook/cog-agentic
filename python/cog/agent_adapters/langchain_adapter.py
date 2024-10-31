@@ -6,6 +6,25 @@ from langchain_core.runnables import Runnable
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel
 
+from ..schema import RemotePredictor
+
+
+def get_tools(runnable: Runnable) -> list[RemotePredictor]:
+    tools = []
+
+    for tool in runnable.tools:
+        pred = RemotePredictor(
+            metadata={
+                "name": tool.name,
+                "namespace": "unknown",
+                "description": tool.description,
+            },
+            spec={},
+        )
+        tools.append(pred)
+
+    return tools
+
 
 def add_tool(
     name: str,
@@ -24,7 +43,6 @@ def add_tool(
     runnable = list(agents.values())[0]
 
     print(f"Adding tool: {name}")
-    print(f"schema: {schema}")
 
     tool = StructuredTool.from_function(
         func=func,
@@ -40,12 +58,13 @@ def add_tool(
     print(f"Agent now has {len(runnable.tools)} tools")
 
 
-def remove_tool(name: str, desc: str, runnable: Runnable) -> None:
-    for tool in runnable.tools:
-        if tool.name == name and tool.description == desc:
-            runnable.tools.remove(tool)
+def remove_tool(name: str, desc: str, agents: dict[str, Runnable]) -> None:
+    for runnable in agents.values():
+        for tool in runnable.tools:
+            if tool.name == name and tool.description == desc:
+                runnable.tools.remove(tool)
 
-    print(f"Agent now has {len(runnable.tools)} tools")
+        print(f"Agent now has {len(runnable.tools)} tools")
 
 
 def _update_agent_tooling_internals(tool: StructuredTool, runnable: Runnable) -> None:

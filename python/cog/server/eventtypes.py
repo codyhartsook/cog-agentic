@@ -14,6 +14,14 @@ class PredictionInput:
     # add trace context to pass traceparent and tracestate to child processes
     trace_context: TraceContext
 
+@define
+class RemoteToolsRequest:
+    pass
+
+@define
+class RemoteToolsResponse:
+    tools: list[RemotePredictor]
+
 
 @define
 class RemotePredictorRequest:
