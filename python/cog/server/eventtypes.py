@@ -2,12 +2,31 @@ from typing import Any, Dict
 
 from attrs import define, field, validators
 
+from ..schema import RemotePredictor
+from .telemetry import TraceContext
+
 
 # From worker parent process
 #
 @define
 class PredictionInput:
     payload: Dict[str, Any]
+    # add trace context to pass traceparent and tracestate to child processes
+    trace_context: TraceContext
+
+@define
+class RemoteToolsRequest:
+    pass
+
+@define
+class RemoteToolsResponse:
+    tools: list[RemotePredictor]
+
+
+@define
+class RemotePredictorRequest:
+    predictor: RemotePredictor
+    add: bool = True
 
 
 @define

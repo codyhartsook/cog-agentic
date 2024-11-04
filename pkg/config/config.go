@@ -63,11 +63,19 @@ type Example struct {
 	Output string            `json:"output" yaml:"output"`
 }
 
+type Metadata struct {
+	Name        string `json:"name" yaml:"name"`
+	Description string `json:"description" yaml:"description"`
+	Namespace   string `json:"namespace" yaml:"namespace"`
+	Owner       string `json:"owner" yaml:"owner"`
+}
+
 type Config struct {
-	Build   *Build `json:"build" yaml:"build"`
-	Image   string `json:"image,omitempty" yaml:"image"`
-	Predict string `json:"predict,omitempty" yaml:"predict"`
-	Train   string `json:"train,omitempty" yaml:"train"`
+	Build    *Build    `json:"build" yaml:"build"`
+	Image    string    `json:"image,omitempty" yaml:"image"`
+	Predict  string    `json:"predict,omitempty" yaml:"predict"`
+	Train    string    `json:"train,omitempty" yaml:"train"`
+	Metadata *Metadata `json:"metadata,omitempty" yaml:"metadata"`
 }
 
 func DefaultConfig() *Config {

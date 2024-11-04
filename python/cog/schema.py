@@ -64,6 +64,24 @@ if PYDANTIC_V2:
 else:
     WebhookUrl = pydantic.AnyUrl
 
+class Metadata(pydantic.BaseModel):
+    name: str
+    namespace: str
+    description: str
+    published: bool = False
+
+
+class Spec(pydantic.BaseModel):
+    owner: str = ""
+    access_level: str = "private"
+    consumes_apis: List[str] = []
+    predictor_schema: Dict[str, Any]  = {} # OpenAPI schema will be a dictionary
+
+
+class RemotePredictor(pydantic.BaseModel, extra=pydantic.Extra.allow):
+    metadata: Metadata
+    spec: Spec
+
 
 class PredictionRequest(PredictionBaseModel):
     id: Optional[str] = None
