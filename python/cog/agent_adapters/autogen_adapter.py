@@ -11,10 +11,6 @@ def get_tools(agent: ConversableAgent) -> list[RemotePredictor]:
 
     if hasattr(agent, "llm_config") and agent.llm_config and "tools" in agent.llm_config:
         for tool in agent.llm_config["tools"]:
-            # inspect the input schema of the tool to determine if we added it
-            # if we added it, create a remote predictor object
-
-            
 
             # create a remote predictor object from the tool
             remote_predictor = RemotePredictor(
@@ -84,10 +80,13 @@ def remove_tool(
 ) -> None:
     caller, _ = get_caller_and_executor(agents)
 
-    caller.update_tool_signature(name, is_remove=True)
-    # remove from executor?
-
     if hasattr(caller, "llm_config") and caller.llm_config and "tools" in caller.llm_config:
-        print(f"Agent now has {len(caller.llm_config['tools'])} tools")
+
+        try:
+            num_tools = len(caller.llm_config["tools"])
+            caller.update_tool_signature(name, is_remove=True)
+            print(f"Agent now has {num_tools-1} tools")
+        except Exception as e:
+            print(f"Error removing tool {name}: {e}")
     else:
         print("Agent now has 0 tools")
