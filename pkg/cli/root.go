@@ -15,8 +15,8 @@ var projectDirFlag string
 func NewRootCommand() (*cobra.Command, error) {
 	rootCmd := cobra.Command{
 		Use:   "cog",
-		Short: "Cog: Containers for machine learning",
-		Long: `Containers for machine learning.
+		Short: "Cog: Containers for agents and machine learning",
+		Long: `Containers for agents and machine learning.
 
 To get started, take a look at the documentation:
 https://github.com/replicate/cog`,
