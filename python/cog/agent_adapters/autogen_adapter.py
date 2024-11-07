@@ -9,9 +9,12 @@ from ..schema import RemotePredictor
 def get_tools(agent: ConversableAgent) -> list[RemotePredictor]:
     tools = []
 
-    if hasattr(agent, "llm_config") and agent.llm_config and "tools" in agent.llm_config:
+    if (
+        hasattr(agent, "llm_config")
+        and agent.llm_config
+        and "tools" in agent.llm_config
+    ):
         for tool in agent.llm_config["tools"]:
-
             # create a remote predictor object from the tool
             remote_predictor = RemotePredictor(
                 metadata={
@@ -19,12 +22,13 @@ def get_tools(agent: ConversableAgent) -> list[RemotePredictor]:
                     "namespace": "unknown",
                     "description": tool["function"]["description"],
                 },
-                spec={}
+                spec={},
             )
 
             tools.append(remote_predictor)
 
     return tools
+
 
 def add_tool(
     name: str,
@@ -52,7 +56,9 @@ def add_tool(
         description=desc,  # The description of the tool.
     )
 
-    print(f"Agent now has {len(caller.llm_config["tools"])} tools")
+    num_tools = len(caller.llm_config["tools"])
+    print(f"Agent now has {num_tools} tools")
+
 
 def get_caller_and_executor(
     agents: dict[str, ConversableAgent],
@@ -80,8 +86,11 @@ def remove_tool(
 ) -> None:
     caller, _ = get_caller_and_executor(agents)
 
-    if hasattr(caller, "llm_config") and caller.llm_config and "tools" in caller.llm_config:
-
+    if (
+        hasattr(caller, "llm_config")
+        and caller.llm_config
+        and "tools" in caller.llm_config
+    ):
         try:
             num_tools = len(caller.llm_config["tools"])
             caller.update_tool_signature(name, is_remove=True)

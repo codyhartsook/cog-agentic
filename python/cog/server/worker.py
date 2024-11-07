@@ -18,17 +18,34 @@ from opentelemetry.propagate import extract
 from traceloop.sdk import Traceloop
 
 from ..json import make_encodeable
-from ..predictor import (BasePredictor, check_tool_methods_implemented,
-                         get_predict, get_tools, load_predictor_from_ref,
-                         remote_predictor_retrieval_func, run_setup,
-                         update_agent_tooling)
+from ..predictor import (
+    BasePredictor,
+    check_tool_methods_implemented,
+    get_predict,
+    get_tools,
+    load_predictor_from_ref,
+    remote_predictor_retrieval_func,
+    run_setup,
+    update_agent_tooling,
+)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
-from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
-                         PredictionOutputType, RemotePredictorRequest,
-                         RemoteToolsRequest, RemoteToolsResponse, Shutdown)
-from .exceptions import (CancelationException, FatalWorkerException,
-                         InvalidStateException)
+from .eventtypes import (
+    Done,
+    Log,
+    PredictionInput,
+    PredictionOutput,
+    PredictionOutputType,
+    RemotePredictorRequest,
+    RemoteToolsRequest,
+    RemoteToolsResponse,
+    Shutdown,
+)
+from .exceptions import (
+    CancelationException,
+    FatalWorkerException,
+    InvalidStateException,
+)
 from .helpers import StreamRedirector
 from .telemetry import TraceContext, current_trace_context
 
@@ -92,7 +109,7 @@ class Worker:
         self._trace_context = ctx
         self._predict_start.set()
         return result
-    
+
     def get_external_tools(self) -> list[RemotePredictor]:
         request = RemoteToolsRequest()
         self._events.send(request)
@@ -429,7 +446,14 @@ class ChildWorker(_spawn.Process):  # type: ignore
             self._predictor.remove_tool(pred.metadata.name)
         else:
             log.info("external info source methods NOT implemented")
-            update_agent_tooling(pred.metadata.name, pred.metadata.description, None, None, self._predictor, remove=True)
+            update_agent_tooling(
+                pred.metadata.name,
+                pred.metadata.description,
+                None,
+                None,
+                self._predictor,
+                remove=True,
+            )
 
     def _predict(
         self,
@@ -450,7 +474,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 self._config["metadata"]["name"]
             ).start_as_current_span("predict", context=ctx) as span:
                 span.set_attribute("input", str(payload))
-                
+
                 result = predict(**payload)
 
                 if result:

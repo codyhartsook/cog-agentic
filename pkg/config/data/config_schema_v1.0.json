@@ -4,6 +4,36 @@
   "title": "Schema for cog.yaml",
   "description": "Defines how to build a Docker image and how to run predictions on your model inside that image.",
   "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Metadata for the agentic cog.yaml configuration.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the component."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "The namespace for the component."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the component."
+        }
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "description": "Specification details for the component configuration.",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "The owner of the component."
+        }
+      },
+      "additionalProperties": false
+    },
     "build": {
       "$id": "#/properties/build",
       "type": "object",
@@ -186,5 +216,5 @@
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
