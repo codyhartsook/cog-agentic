@@ -16,6 +16,7 @@ import yaml
 from opentelemetry import trace
 from opentelemetry.propagate import extract
 from traceloop.sdk import Traceloop
+from traceloop.sdk.decorators import workflow
 
 from ..json import make_encodeable
 from ..predictor import (
@@ -406,11 +407,13 @@ class ChildWorker(_spawn.Process):  # type: ignore
             else:
                 print(f"Got unexpected event: {ev}", file=sys.stderr)
 
+    @workflow()
     def get_external_tools(self) -> list[RemotePredictor]:
         assert self._predictor
 
         return get_tools(self._predictor)
 
+    @workflow()
     def add_external_tool(self, pred: RemotePredictor) -> None:
         assert self._predictor
         log.info("adding external info source")
@@ -438,6 +441,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 self._predictor,
             )
 
+    @workflow()
     def remove_external_tool(self, pred: RemotePredictor) -> None:
         assert self._predictor
         log.info("removing external info source")
@@ -474,6 +478,7 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 self._config["metadata"]["name"]
             ).start_as_current_span("predict", context=ctx) as span:
                 span.set_attribute("input", str(payload))
+                span.set_attribute("namespace", self._config["metadata"]["namespace"])
 
                 result = predict(**payload)
 

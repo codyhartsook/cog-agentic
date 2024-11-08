@@ -12,8 +12,18 @@ import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
-                    Union, cast, get_type_hints)
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+    get_type_hints,
+)
 
 import requests
 from opentelemetry import trace
@@ -33,6 +43,7 @@ from autogen import ConversableAgent
 from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
+
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
 from typing_extensions import Annotated
 
@@ -41,8 +52,7 @@ from .agent_adapters.autogen_adapter import get_tools as get_tools_autogen
 from .agent_adapters.autogen_adapter import remove_tool as remove_tool_autogen
 from .agent_adapters.langchain_adapter import add_tool as add_tool_langchain
 from .agent_adapters.langchain_adapter import get_tools as get_tools_langchain
-from .agent_adapters.langchain_adapter import \
-    remove_tool as remove_tool_langchain
+from .agent_adapters.langchain_adapter import remove_tool as remove_tool_langchain
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
 from .schema import RemotePredictor
@@ -95,6 +105,7 @@ class BasePredictor(ABC):
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
 
+
 def get_tools(predictor: BasePredictor) -> list[RemotePredictor]:
     tools = []
 
@@ -106,7 +117,10 @@ def get_tools(predictor: BasePredictor) -> list[RemotePredictor]:
 
     return tools
 
-def update_agent_tooling(name: str, desc: str, schema, func, predictor: BasePredictor, remove: bool=False) -> None:
+
+def update_agent_tooling(
+    name: str, desc: str, schema, func, predictor: BasePredictor, remove: bool = False
+) -> None:
     """
     Return a dictionary of agents that are capable of using tools. This will
     be used to dynamically add tools to the agents.
@@ -123,6 +137,7 @@ def update_agent_tooling(name: str, desc: str, schema, func, predictor: BasePred
     else:
         add_tool_autogen(name, desc, schema, func, agent_atomics[ConversableAgent])
         add_tool_langchain(name, desc, schema, func, agent_atomics[AgentExecutor])
+
 
 def _generate_pydantic_models_from_spec(
     openapi_spec: Dict[str, Any], output_file: str = "model.py"
@@ -186,7 +201,9 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
 
         print("Input to remote predictor:", input)
 
-        with trace.get_tracer("predictor").start_as_current_span("tool_call"):
+        with trace.get_tracer("predictor").start_as_current_span("tool_call") as span:
+            span.set_attribute("namespace", pred.metadata.namespace)
+
             url = f"http://localhost:5002/predictions/{pred.metadata.namespace}/{pred.metadata.name}"
 
             # Inject the trace context into the request headers
