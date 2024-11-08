@@ -12,7 +12,10 @@ func init() {
 	if _, ok := os.OpenFile("catalog-info.yaml", os.O_RDONLY, 0); ok == nil {
 		// create a file called cog.yaml from catalog-info.yaml
 		if err := os.Link("catalog-info.yaml", "cog.yaml"); err != nil {
-			console.Fatalf("%s", err)
+			// if the file already exists, don't do anything
+			if !os.IsExist(err) {
+				console.Fatalf("Failed to copy catalog-info.yaml to cog.yaml: %s", err)
+			}
 		}
 	}
 }
