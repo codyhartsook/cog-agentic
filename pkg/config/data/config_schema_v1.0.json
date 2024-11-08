@@ -24,19 +24,7 @@
           "description": "A description of the component."
         }
       },
-      "additionalProperties": false
-    },
-    "spec": {
-      "type": "object",
-      "description": "Specification details for the component configuration.",
-      "properties": {
-        "owner": {
-          "$id": "#/properties/spec/properties/owner",
-          "type": "string",
-          "description": "The owner of the component."
-        }
-      },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "build": {
       "$id": "#/properties/build",
