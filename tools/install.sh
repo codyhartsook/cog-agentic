@@ -105,6 +105,7 @@ check_docker() {
 setup_cog() {
   COG_LOCATION="${INSTALL_DIR}/cog"
   BINARY_URI="https://github.com/codyhartsook/cog-agentic/releases/latest/download/cog_$(uname -s)_$(uname -m)"
+  echo "Downloading cog binary from $BINARY_URI to $COG_LOCATION"
   if [ -f "$COG_LOCATION" ]; then
     echo "A file already exists at $COG_LOCATION"
     echo "Do you want to delete this file and continue with this installation anyway?"
@@ -148,23 +149,10 @@ setup_cog() {
 
 
 print_success() {
-  echo "Successfully installed cog. Run \`cog login\` to configure Replicate access"
+  echo "Successfully installed cog."
 }
 
 main() {
-
-  # Check if macOS
-  if [ "$(uname -s)" = "Darwin" ]; then
-    echo "On macOS, it is recommended to install cog using Homebrew instead:"
-    echo \`brew install cog\`
-    echo "Do you want to continue with this installation anyway?"
-    
-    read -p "Continue? (y/N): " choice
-    case "$choice" in 
-      y|Y ) echo "Continuing with installation...";;
-      * ) echo "Exiting installation."; exit 1;;
-    esac
-  fi
 
   set_install_dir
 
