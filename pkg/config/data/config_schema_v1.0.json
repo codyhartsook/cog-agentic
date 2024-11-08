@@ -9,14 +9,17 @@
       "description": "Metadata for the agentic cog.yaml configuration.",
       "properties": {
         "name": {
+          "$id": "#/properties/metadata/properties/name",
           "type": "string",
           "description": "The name of the component."
         },
         "namespace": {
+          "$id": "#/properties/metadata/properties/namespace",
           "type": "string",
           "description": "The namespace for the component."
         },
         "description": {
+          "$id": "#/properties/metadata/properties/description",
           "type": "string",
           "description": "A description of the component."
         }
@@ -28,6 +31,7 @@
       "description": "Specification details for the component configuration.",
       "properties": {
         "owner": {
+          "$id": "#/properties/spec/properties/owner",
           "type": "string",
           "description": "The owner of the component."
         }
@@ -216,5 +220,5 @@
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
