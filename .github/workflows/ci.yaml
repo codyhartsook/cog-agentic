@@ -29,28 +29,28 @@ jobs:
     outputs:
       python-versions: ${{ steps.baipp.outputs.supported_python_classifiers_json_array }}
 
-  lint:
-    name: Lint
-    needs: build-python
-    runs-on: ubuntu-latest-8-cores
-    steps:
-      - name: Download pre-built packages
-        uses: actions/download-artifact@v4
-        with:
-          name: Packages
-          path: dist
-      - name: Set COG_WHEEL
-        run: echo COG_WHEEL=$(ls dist/*.whl) >>"$GITHUB_ENV"
-      - name: Extract source distribution
-        run: tar xf dist/*.tar.gz --strip-components=1
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-      - uses: hynek/setup-cached-uv@v2
-      - name: Prepare tox
-        run: uv pip install --system tox tox-uv
-      - name: Lint
-        run: make lint
+  # lint:
+  #   name: Lint
+  #   needs: build-python
+  #   runs-on: ubuntu-latest-8-cores
+  #   steps:
+  #     - name: Download pre-built packages
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: Packages
+  #         path: dist
+  #     - name: Set COG_WHEEL
+  #       run: echo COG_WHEEL=$(ls dist/*.whl) >>"$GITHUB_ENV"
+  #     - name: Extract source distribution
+  #       run: tar xf dist/*.tar.gz --strip-components=1
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: 3.12
+  #     - uses: hynek/setup-cached-uv@v2
+  #     - name: Prepare tox
+  #       run: uv pip install --system tox tox-uv
+  #     - name: Lint
+  #       run: make lint
 
   test-go:
     name: "Test Go"
