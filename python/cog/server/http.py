@@ -28,12 +28,17 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
-                         get_training_input_type, get_training_output_type,
-                         load_config, load_slim_predictor_from_ref)
+from ..predictor import (
+    get_input_type,
+    get_output_type,
+    get_predictor_ref,
+    get_training_input_type,
+    get_training_output_type,
+    load_config,
+    load_slim_predictor_from_ref,
+)
 from ..types import PYDANTIC_V2, CogConfig
 from .eventtypes import RemotePredictorRequest
-from .telemetry import current_trace_context
 
 if PYDANTIC_V2:
     from .helpers import (
@@ -42,8 +47,12 @@ if PYDANTIC_V2:
     )
 
 from .probes import ProbeHelper
-from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
-                     UnknownPredictionError)
+from .runner import (
+    PredictionRunner,
+    RunnerBusyError,
+    SetupResult,
+    UnknownPredictionError,
+)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
@@ -286,14 +295,14 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
 
         this_predictor = schema.RemotePredictor(
             metadata=schema.Metadata(
-                name=config["metadata"]["name"],
-                namespace=config["metadata"]["namespace"],
-                description=config["metadata"]["description"],
-                published=True,
+                name=config.get("metadata", {}).get("name", ""),
+                namespace=config.get("metadata", {}).get("namespace", "default"),
+                description=config.get("metadata", {}).get("description", ""),
+                published=config.get("metadata", {}).get("published", False),
             ),
             spec=schema.Spec(
-                access_level="public",
-                owner="cog",
+                access_level=config.get("spec", {}).get("access_level", "PRIVATE"),
+                owner=config.get("spec", {}).get("owner", "unknown"),
                 consumes_apis=[],
                 predictor_schema=openapi_schema,  # Attach the OpenAPI schema here
             ),
@@ -309,7 +318,7 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
             health = app.state.health
         setup = app.state.setup_result.to_dict() if app.state.setup_result else {}
         return jsonable_encoder({"status": health.name, "setup": setup})
-    
+
     @app.get("/external-info-tools")
     async def get_external_info_tools() -> Any:
         """
