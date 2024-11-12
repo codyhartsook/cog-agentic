@@ -2,9 +2,21 @@
 # Reference: https://cog.run/yaml
 
 metadata:
-  name: "default"
-  description: "What can I do"
+  name: "foobar-agent"
+
+  # description of the agent's capabilities
+  description: "I am built to do something specific"
   namespace: "default"
+
+  # published status of the agent determines if it is visible to others
+  published: false
+
+spec:
+  # the owner of the agent
+  owner: "foobar@cisco.com"
+
+  # the access level of the agent or underlying data+model
+  access_level: "PRIVATE"
 
 build:
   # set to true if your model requires a GPU

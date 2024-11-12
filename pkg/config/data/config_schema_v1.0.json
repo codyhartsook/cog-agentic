@@ -22,6 +22,28 @@
           "$id": "#/properties/metadata/properties/description",
           "type": "string",
           "description": "A description of the component."
+        },
+        "published": {
+          "$id": "#/properties/metadata/properties/published",
+          "type": "boolean",
+          "description": "Whether the component is published."
+        }
+      },
+      "additionalProperties": true
+    },
+    "spec": {
+      "type": "object",
+      "description": "The specification for the cog.yaml configuration.",
+      "properties": {
+        "owner": {
+          "$id": "#/properties/spec/properties/owner",
+          "type": "string",
+          "description": "The owner of the component."
+        },
+        "access_level": {
+          "$id": "#/properties/spec/properties/access_level",
+          "type": "string",
+          "description": "The access level of the component."
         }
       },
       "additionalProperties": true
