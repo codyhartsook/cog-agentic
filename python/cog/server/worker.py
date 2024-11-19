@@ -19,34 +19,17 @@ from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow
 
 from ..json import make_encodeable
-from ..predictor import (
-    BasePredictor,
-    check_tool_methods_implemented,
-    get_predict,
-    get_tools,
-    load_predictor_from_ref,
-    remote_predictor_retrieval_func,
-    run_setup,
-    update_agent_tooling,
-)
+from ..predictor import (BasePredictor, check_tool_methods_implemented,
+                         get_predict, get_tools, load_predictor_from_ref,
+                         remote_predictor_retrieval_func, run_setup,
+                         update_agent_tooling)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
-from .eventtypes import (
-    Done,
-    Log,
-    PredictionInput,
-    PredictionOutput,
-    PredictionOutputType,
-    RemotePredictorRequest,
-    RemoteToolsRequest,
-    RemoteToolsResponse,
-    Shutdown,
-)
-from .exceptions import (
-    CancelationException,
-    FatalWorkerException,
-    InvalidStateException,
-)
+from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
+                         PredictionOutputType, RemotePredictorRequest,
+                         RemoteToolsRequest, RemoteToolsResponse, Shutdown)
+from .exceptions import (CancelationException, FatalWorkerException,
+                         InvalidStateException)
 from .helpers import StreamRedirector
 from .telemetry import TraceContext, current_trace_context
 
