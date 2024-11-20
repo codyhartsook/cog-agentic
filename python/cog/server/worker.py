@@ -20,14 +20,15 @@ from traceloop.sdk.decorators import workflow
 
 from ..json import make_encodeable
 from ..predictor import (BasePredictor, check_tool_methods_implemented,
-                         get_predict, get_tools, load_predictor_from_ref,
+                         get_predict, get_workflow, load_predictor_from_ref,
                          remote_predictor_retrieval_func, run_setup,
                          update_agent_tooling)
 from ..schema import RemotePredictor
 from ..types import PYDANTIC_V2, URLPath
 from .eventtypes import (Done, Log, PredictionInput, PredictionOutput,
-                         PredictionOutputType, RemotePredictorRequest,
-                         RemoteToolsRequest, RemoteToolsResponse, Shutdown)
+                         PredictionOutputType, PredictorWorkflowRequest,
+                         PredictorWorkflowResponse, RemotePredictorRequest,
+                         Shutdown)
 from .exceptions import (CancelationException, FatalWorkerException,
                          InvalidStateException)
 from .helpers import StreamRedirector
@@ -94,20 +95,20 @@ class Worker:
         self._predict_start.set()
         return result
 
-    def get_external_tools(self) -> list[RemotePredictor]:
-        request = RemoteToolsRequest()
+    def get_predictor_workflow(self) -> Dict[str, Any]:
+        request = PredictorWorkflowRequest()
         self._events.send(request)
 
         while True:
             if not self._events.poll(0.1):
                 break
             ev = self._events.recv()
-            if isinstance(ev, RemoteToolsResponse):
-                return ev.tools
+            if isinstance(ev, PredictorWorkflowResponse):
+                return ev.workflow
             elif isinstance(ev, Done):
                 break
 
-        return []
+        return {}
 
     def add_external_tool(self, request: RemotePredictorRequest) -> None:
         """
@@ -379,9 +380,9 @@ class ChildWorker(_spawn.Process):  # type: ignore
                 break
             if isinstance(ev, PredictionInput):
                 self._predict(ev.payload, ev.trace_context, redirector)
-            elif isinstance(ev, RemoteToolsRequest):
-                tools = self.get_external_tools()
-                self._events.send(RemoteToolsResponse(tools=tools))
+            elif isinstance(ev, PredictorWorkflowRequest):
+                workflow = self.get_predictor_workflow()
+                self._events.send(PredictorWorkflowResponse(workflow=workflow))
             elif isinstance(ev, RemotePredictorRequest):
                 if ev.add:
                     self.add_external_tool(ev.predictor)
@@ -390,11 +391,10 @@ class ChildWorker(_spawn.Process):  # type: ignore
             else:
                 print(f"Got unexpected event: {ev}", file=sys.stderr)
 
-    @workflow()
-    def get_external_tools(self) -> list[RemotePredictor]:
+    def get_predictor_workflow(self) -> Dict[str, Any]:
         assert self._predictor
 
-        return get_tools(self._predictor)
+        return get_workflow(self._predictor)
 
     @workflow()
     def add_external_tool(self, pred: RemotePredictor) -> None:

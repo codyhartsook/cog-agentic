@@ -22,6 +22,9 @@ var cogYamlContent []byte
 //go:embed init-templates/predict.py
 var predictPyContent []byte
 
+//go:embed init-templates/.github/workflows/push.yaml
+var actionsWorkflowContent []byte
+
 func newInitCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "init",
@@ -45,9 +48,10 @@ func initCommand(args []string) error {
 	}
 
 	fileContentMap := map[string][]byte{
-		"cog.yaml":      cogYamlContent,
-		"predict.py":    predictPyContent,
-		".dockerignore": dockerignoreContent,
+		"cog.yaml":                    cogYamlContent,
+		"predict.py":                  predictPyContent,
+		".dockerignore":               dockerignoreContent,
+		".github/workflows/push.yaml": actionsWorkflowContent,
 	}
 
 	for filename, content := range fileContentMap {

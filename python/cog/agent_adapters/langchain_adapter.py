@@ -6,24 +6,35 @@ from langchain_core.runnables import Runnable
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel
 
-from ..schema import RemotePredictor
 
+def get_workflow(agents: dict[str, Runnable]) -> dict[str, Any]:
+    if len(agents) == 0:
+        return {"nodes": [], "edges": []}
+    
+    runnable = list(agents.values())[0]
+    workflow = {"nodes": [], "edges": []}
+    root_name = "AgentExecutor"
 
-def get_tools(runnable: Runnable) -> list[RemotePredictor]:
-    tools = []
+    if runnable.name:
+        root_name = runnable.name
+
+    workflow["nodes"].append({"name": root_name, "description": "Langchain - "+root_name})
 
     for tool in runnable.tools:
-        pred = RemotePredictor(
-            metadata={
+        workflow["nodes"].append(
+            {
                 "name": tool.name,
-                "namespace": "unknown",
                 "description": tool.description,
-            },
-            spec={},
+            }
         )
-        tools.append(pred)
+        workflow["edges"].append(
+            {
+                "source": root_name,
+                "target": tool.name,
+            }
+        )
 
-    return tools
+    return workflow
 
 
 def add_tool(

@@ -15,12 +15,12 @@ class PredictionInput:
     trace_context: TraceContext
 
 @define
-class RemoteToolsRequest:
+class PredictorWorkflowRequest:
     pass
 
 @define
-class RemoteToolsResponse:
-    tools: list[RemotePredictor]
+class PredictorWorkflowResponse:
+    workflow: Dict[str, Any]
 
 
 @define

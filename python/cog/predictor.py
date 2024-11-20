@@ -12,18 +12,8 @@ import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import (
-    Annotated,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Type,
-    Union,
-    cast,
-    get_type_hints,
-)
+from typing import (Annotated, Any, Callable, Dict, List, Optional, Type,
+                    Union, cast, get_type_hints)
 
 import requests
 from opentelemetry import trace
@@ -43,16 +33,18 @@ from autogen import ConversableAgent
 from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
-
 # Added in Python 3.9. Can be from typing if we drop support for <3.9
 from typing_extensions import Annotated
 
 from .agent_adapters.autogen_adapter import add_tool as add_tool_autogen
-from .agent_adapters.autogen_adapter import get_tools as get_tools_autogen
+from .agent_adapters.autogen_adapter import \
+    get_workflow as get_workflow_autogen
 from .agent_adapters.autogen_adapter import remove_tool as remove_tool_autogen
 from .agent_adapters.langchain_adapter import add_tool as add_tool_langchain
-from .agent_adapters.langchain_adapter import get_tools as get_tools_langchain
-from .agent_adapters.langchain_adapter import remove_tool as remove_tool_langchain
+from .agent_adapters.langchain_adapter import \
+    get_workflow as get_workflow_langchain
+from .agent_adapters.langchain_adapter import \
+    remove_tool as remove_tool_langchain
 from .code_xforms import load_module_from_string, strip_model_source_code
 from .errors import ConfigDoesNotExist, PredictorNotSet
 from .schema import RemotePredictor
@@ -105,17 +97,36 @@ class BasePredictor(ABC):
         Optional: Explicitly define how your agent should remove tools at runtime.
         """
 
-
-def get_tools(predictor: BasePredictor) -> list[RemotePredictor]:
-    tools = []
-
+def get_agent_atomics(predictor: BasePredictor) -> dict[Type[ABC], dict[str, ABC]]:
+    agent_atomics = {ConversableAgent: {}, AgentExecutor: {}}
     for key, value in predictor.__dict__.items():
         if isinstance(value, ConversableAgent):
-            tools.extend(get_tools_autogen(value))
+            agent_atomics[ConversableAgent][key] = value
         if isinstance(value, AgentExecutor):
-            tools.extend(get_tools_langchain(value))
+            agent_atomics[AgentExecutor][key] = value
+    return agent_atomics
 
-    return tools
+def get_workflow(predictor: BasePredictor) -> dict[str, Any]:
+    """
+    Return a graph of agent components and tools.
+    """
+    agent_atomics = get_agent_atomics(predictor)
+    G = {"nodes": [], "edges": []}
+
+    for type, agents in agent_atomics.items():
+        if len(agents) == 0:
+            continue
+
+        if type == ConversableAgent:
+            g = get_workflow_autogen(agents)
+            G["nodes"].extend(g["nodes"])
+            G["edges"].extend(g["edges"])
+        elif type == AgentExecutor:
+            g = get_workflow_langchain(agents)
+            G["nodes"].extend(g["nodes"])
+            G["edges"].extend(g["edges"])
+
+    return G
 
 
 def update_agent_tooling(
@@ -125,12 +136,8 @@ def update_agent_tooling(
     Return a dictionary of agents that are capable of using tools. This will
     be used to dynamically add tools to the agents.
     """
-    agent_atomics = {ConversableAgent: {}, AgentExecutor: {}}
-    for key, value in predictor.__dict__.items():
-        if isinstance(value, ConversableAgent):
-            agent_atomics[ConversableAgent][key] = value
-        if isinstance(value, AgentExecutor):
-            agent_atomics[AgentExecutor][key] = value
+    agent_atomics = get_agent_atomics(predictor)
+
     if remove:
         remove_tool_autogen(name, desc, agent_atomics[ConversableAgent])
         remove_tool_langchain(name, desc, agent_atomics[AgentExecutor])

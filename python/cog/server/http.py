@@ -28,15 +28,9 @@ from ..errors import PredictorNotSet
 from ..files import upload_file
 from ..json import upload_files
 from ..logging import setup_logging
-from ..predictor import (
-    get_input_type,
-    get_output_type,
-    get_predictor_ref,
-    get_training_input_type,
-    get_training_output_type,
-    load_config,
-    load_slim_predictor_from_ref,
-)
+from ..predictor import (get_input_type, get_output_type, get_predictor_ref,
+                         get_training_input_type, get_training_output_type,
+                         load_config, load_slim_predictor_from_ref)
 from ..types import PYDANTIC_V2, CogConfig
 from .eventtypes import RemotePredictorRequest
 
@@ -47,12 +41,8 @@ if PYDANTIC_V2:
     )
 
 from .probes import ProbeHelper
-from .runner import (
-    PredictionRunner,
-    RunnerBusyError,
-    SetupResult,
-    UnknownPredictionError,
-)
+from .runner import (PredictionRunner, RunnerBusyError, SetupResult,
+                     UnknownPredictionError)
 from .telemetry import make_trace_context, trace_context
 from .worker import make_worker
 
@@ -319,13 +309,12 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
         setup = app.state.setup_result.to_dict() if app.state.setup_result else {}
         return jsonable_encoder({"status": health.name, "setup": setup})
 
-    @app.get("/external-info-tools")
-    async def get_external_info_tools() -> Any:
+    @app.get("/agentic-workflow")
+    async def get_predictor_workflow() -> Any:
         """
-        Get all external information sources
+        Get the workflow graph of the predictor
         """
-        tools = worker.get_external_tools()
-        return tools
+        return worker.get_predictor_workflow()
 
     @app.post("/add-external-info-tool")
     async def add_external_info_tool(
