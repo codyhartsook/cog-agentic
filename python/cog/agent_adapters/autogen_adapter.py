@@ -3,31 +3,51 @@ from typing import Any, Callable
 from autogen import ConversableAgent, register_function
 from pydantic import BaseModel
 
-from ..schema import RemotePredictor
 
+def get_workflow(agents: dict[str, ConversableAgent]) -> dict[str, Any]:
+    workflow = {"nodes": [], "edges": []}
 
-def get_tools(agent: ConversableAgent) -> list[RemotePredictor]:
-    tools = []
+    caller, executor = get_caller_and_executor(agents)
 
-    if (
-        hasattr(agent, "llm_config")
-        and agent.llm_config
-        and "tools" in agent.llm_config
-    ):
-        for tool in agent.llm_config["tools"]:
-            # create a remote predictor object from the tool
-            remote_predictor = RemotePredictor(
-                metadata={
-                    "name": tool["function"]["name"],
-                    "namespace": "unknown",
-                    "description": tool["function"]["description"],
-                },
-                spec={},
-            )
+    # executor will be the root node, likely user_proxy_agent
+    if executor:
+        workflow["nodes"].append(
+            {
+                "name": executor.name,
+                "description": "Autogen - " + executor.name,
+            }
+        )
 
-            tools.append(remote_predictor)
+    if caller:
+        workflow["nodes"].append(
+            {
+                "name": caller.name,
+                "description": "Autogen - " + caller.name,
+            }
+        )
+        workflow["edges"].append(
+            {
+                "source": executor.name,
+                "target": caller.name,
+            }
+        )
+        if "tools" in caller.llm_config:
+            for tool in caller.llm_config["tools"]:
+                workflow["nodes"].append(
+                    {
+                        "name": tool["function"]["name"],
+                        "description": tool["function"]["description"],
+                    }
+                )
+                workflow["edges"].append(
+                    {
+                        "source": caller.name,
+                        "target": tool["function"]["name"],
+                    }
+                )
+                
 
-    return tools
+    return workflow
 
 
 def add_tool(
