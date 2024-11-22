@@ -274,32 +274,6 @@ def create_app(  # pylint: disable=too-many-arguments,too-many-locals,too-many-s
             "openapi_url": "/openapi.json",
         }
 
-    @app.get("/identity", response_class=JSONResponse)
-    async def get_identity() -> Any:
-        # Fetch the OpenAPI schema
-        openapi_schema = app.openapi()
-
-        # open our config file cog.yaml
-        with open("cog.yaml") as stream:
-            config = yaml.safe_load(stream)
-
-        this_predictor = schema.RemotePredictor(
-            metadata=schema.Metadata(
-                name=config.get("metadata", {}).get("name", ""),
-                namespace=config.get("metadata", {}).get("namespace", "default"),
-                description=config.get("metadata", {}).get("description", ""),
-                published=config.get("metadata", {}).get("published", False),
-            ),
-            spec=schema.Spec(
-                access_level=config.get("spec", {}).get("access_level", "PRIVATE"),
-                owner=config.get("spec", {}).get("owner", "unknown"),
-                consumes_apis=[],
-                predictor_schema=openapi_schema,  # Attach the OpenAPI schema here
-            ),
-        )
-
-        return this_predictor.dict()
-
     @app.get("/health-check")
     async def healthcheck() -> Any:
         if app.state.health == Health.READY:

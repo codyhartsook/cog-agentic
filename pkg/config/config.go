@@ -67,7 +67,10 @@ type Metadata struct {
 	Name        string `json:"name" yaml:"name"`
 	Description string `json:"description" yaml:"description"`
 	Namespace   string `json:"namespace" yaml:"namespace"`
-	Owner       string `json:"owner" yaml:"owner"`
+}
+
+type Spec struct {
+	Owner string `json:"owner" yaml:"owner"`
 }
 
 type Config struct {
@@ -76,6 +79,7 @@ type Config struct {
 	Predict  string    `json:"predict,omitempty" yaml:"predict"`
 	Train    string    `json:"train,omitempty" yaml:"train"`
 	Metadata *Metadata `json:"metadata,omitempty" yaml:"metadata"`
+	Spec     *Spec     `json:"spec,omitempty" yaml:"spec"`
 }
 
 func DefaultConfig() *Config {
