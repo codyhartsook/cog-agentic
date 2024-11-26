@@ -211,7 +211,7 @@ def remote_predictor_retrieval_func(pred: RemotePredictor) -> Any:
         with trace.get_tracer("predictor").start_as_current_span("tool_call") as span:
             span.set_attribute("namespace", pred.metadata.namespace)
 
-            url = f"http://localhost:5002/predictions/{pred.metadata.namespace}/{pred.metadata.name}"
+            url = f"http://localhost:5002/{pred.metadata.namespace}/{pred.metadata.name}/predictions"
 
             # Inject the trace context into the request headers
             span_context = trace.get_current_span().get_span_context()
